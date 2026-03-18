@@ -1,0 +1,8 @@
+[package]
+name = "Pure-ECS-Data"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = {version = "0.18.1", features = ["hotpatching"]}
+bevy_seedling = "0.7.1"
