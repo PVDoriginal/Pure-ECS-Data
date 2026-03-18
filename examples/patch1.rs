@@ -21,7 +21,7 @@ fn patch1() -> Patch {
         .with_input(keys!(ControlLeft, KeyS))
         .id();
 
-    patch.connect(inlet!(print_hello, 0), outlet!(bang, 10));
+    patch.connect(outlet!(bang, 10), inlet!(print_hello, 0));
 
     patch
 }

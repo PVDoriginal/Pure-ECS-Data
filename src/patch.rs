@@ -47,11 +47,11 @@ impl Patch {
         const OUT2: usize,
     >(
         &mut self,
-        inlet: Inlet<I, IN1, OUT1>,
         outlet: Outlet<O, IN2, OUT2>,
+        inlet: Inlet<I, IN1, OUT1>,
     ) {
         self.connections
-            .push(((inlet.node.0, I), (outlet.node.0, O)));
+            .push(((outlet.node.0, O), (inlet.node.0, I)));
     }
 
     pub fn bind_input<const IN: usize, const OUT: usize>(
