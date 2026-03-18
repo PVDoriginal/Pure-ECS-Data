@@ -1,6 +1,7 @@
 use Pure_ECS_Data::{
-    PureDataPlugin,
+    PureDataPlugin, inlet, keys, keys_internal,
     nodes::{Bang, Print},
+    outlet,
     patch::{AddPatch, Patch},
 };
 use bevy::prelude::*;
@@ -17,10 +18,12 @@ fn patch1() -> Patch {
 
     let print_hello = patch.create_node(Print("hello world".into())).id();
 
-    patch
+    let bang = patch
         .create_node(Bang)
-        .with_input(|keys| keys.pressed(KeyCode::Space), false)
-        .connect_to(0, (print_hello, 0));
+        .with_input(keys!(ControlLeft, KeyS), false)
+        .id();
+
+    patch.connect(inlet!(print_hello, 0), outlet!(bang, 10));
 
     patch
 }

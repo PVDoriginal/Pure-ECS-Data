@@ -1,22 +1,20 @@
+use std::arch::x86_64;
+
 use crate::nodes::NodeComponent;
 use bevy::prelude::*;
 pub struct Patch {
     pub(crate) nodes: Vec<(Box<dyn NodeComponent + Send + Sync + 'static>, Input)>,
-    pub(crate) connections: Vec<((NodeRef, usize), (NodeRef, usize))>,
+    pub(crate) connections: Vec<((usize, usize), (usize, usize))>,
 }
 
 #[derive(Component, Clone)]
 pub(crate) struct Input {
     pub input: fn(ButtonInput<KeyCode>) -> bool,
-    pub toggle: bool,
 }
 
 impl Default for Input {
     fn default() -> Input {
-        Input {
-            input: |_| false,
-            toggle: false,
-        }
+        Input { input: |_| false }
     }
 }
 
@@ -28,10 +26,10 @@ impl Patch {
         }
     }
 
-    pub fn create_node<'a>(
+    pub fn create_node<'a, const IN: usize, const OUT: usize>(
         &'a mut self,
-        node: impl NodeComponent + Send + Sync + 'static,
-    ) -> NodeCommands<'a> {
+        node: impl NodeComponent + Send + Sync + 'static + crate::nodes::Node<IN, OUT>,
+    ) -> NodeCommands<'a, IN, OUT> {
         self.nodes.push((Box::new(node), default()));
 
         NodeCommands {
@@ -40,47 +38,118 @@ impl Patch {
         }
     }
 
-    pub fn connect(&mut self, node_1: (NodeRef, usize), node_2: (NodeRef, usize)) {
-        self.connections.push((node_1, node_2));
+    pub fn connect<
+        const I: usize,
+        const O: usize,
+        const IN1: usize,
+        const OUT1: usize,
+        const IN2: usize,
+        const OUT2: usize,
+    >(
+        &mut self,
+        inlet: Inlet<I, IN1, OUT1>,
+        outlet: Outlet<O, IN2, OUT2>,
+    ) {
+        self.connections
+            .push(((inlet.node.0, I), (outlet.node.0, O)));
     }
 
-    pub fn bind_input(
+    pub fn bind_input<const IN: usize, const OUT: usize>(
         &mut self,
-        node: NodeRef,
+        node: NodeRef<IN, OUT>,
         input: fn(ButtonInput<KeyCode>) -> bool,
-        toggle: bool,
     ) {
-        self.nodes[node.0].1 = Input { input, toggle };
+        self.nodes[node.0].1 = Input { input };
     }
 }
 
-pub struct NodeCommands<'a> {
-    node_ref: NodeRef,
+pub struct NodeCommands<'a, const IN: usize, const OUT: usize> {
+    node_ref: NodeRef<IN, OUT>,
     patch: &'a mut Patch,
 }
 
-impl<'a> NodeCommands<'a> {
-    pub fn id(&self) -> NodeRef {
+impl<'a, const IN: usize, const OUT: usize> NodeCommands<'a, IN, OUT> {
+    pub fn id(&self) -> NodeRef<IN, OUT> {
         self.node_ref
     }
 
-    pub fn connect_to(&mut self, outlet: usize, other: (NodeRef, usize)) -> &mut Self {
-        self.patch.connect((self.node_ref, outlet), other);
-        self
-    }
+    // pub fn connect_outlet_to(&mut self, outlet: usize, other: (NodeRef, usize)) -> &mut Self {
+    //     self.patch.connect((self.node_ref, outlet), other);
+    //     self
+    // }
+
+    // pub fn connect_inlet_to(&mut self, inlet: usize, other: (NodeRef, usize)) -> &mut Self {
+    //     self.patch.connect(other, (self.node_ref, inlet));
+    //     self
+    // }
 
     pub fn with_input(
         &mut self,
         input: fn(ButtonInput<KeyCode>) -> bool,
         toggle: bool,
     ) -> &mut Self {
-        self.patch.bind_input(self.node_ref, input, toggle);
+        self.patch.bind_input(self.node_ref, input);
         self
     }
 }
 
+#[macro_export]
+macro_rules! keys_internal {
+    ($keys1:ident, $last:ident) => {
+        $keys1.just_pressed(KeyCode::$last)
+    };
+    ($keys1:ident, $head:ident $($rest:ident)*) => {
+        $keys1.pressed(KeyCode::$head) && keys_internal!($keys1, $($rest)*)
+    };
+}
+#[macro_export]
+macro_rules! keys {
+    ($first:ident) => {
+        |keys1| keys1.just_pressed(KeyCode::$first)
+    };
+    ($first:ident, $($rest:ident),*) => {
+        |keys1| keys1.pressed(KeyCode::$first) && keys_internal!(keys1, $($rest)*)
+    };
+}
+
 #[derive(Clone, Copy)]
-pub struct NodeRef(pub(crate) usize);
+pub struct NodeRef<const IN: usize, const OUT: usize>(pub(crate) usize);
+
+impl<const IN: usize, const OUT: usize> NodeRef<IN, OUT> {
+    pub fn inlet<const I: usize>(&self) -> Inlet<I, IN, OUT> {
+        const { assert!(I < IN, "This inlet doesn't exist!") }
+
+        Inlet { node: *self }
+    }
+
+    pub fn outlet<const O: usize>(&self) -> Outlet<O, IN, OUT> {
+        const { assert!(O < OUT, "This outlet doesn't exist!") }
+
+        Outlet { node: *self }
+    }
+}
+
+#[macro_export]
+macro_rules! inlet {
+    ($node:ident, $i:expr) => {
+        $node.inlet::<$i>()
+    };
+}
+
+#[macro_export]
+macro_rules! outlet {
+    ($node:ident, $i:expr) => {
+        $node.outlet::<$i>()
+    };
+}
+
+pub struct Inlet<const I: usize, const IN: usize, const OUT: usize> {
+    node: NodeRef<IN, OUT>,
+}
+
+pub struct Outlet<const O: usize, const IN: usize, const OUT: usize> {
+    node: NodeRef<IN, OUT>,
+}
 
 pub struct PatchPlugin;
 
