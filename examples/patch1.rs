@@ -1,10 +1,8 @@
-use Pure_ECS_Data::{
-    PureDataPlugin, inlet, keys, keys_internal,
-    nodes::{Bang, Print},
-    outlet,
-    patch::{AddPatch, Patch},
-};
 use bevy::prelude::*;
+use pure_ecs_data::{
+    nodes::{Bang, Print},
+    prelude::*,
+};
 
 fn main() {
     let mut app = App::new();
@@ -20,7 +18,7 @@ fn patch1() -> Patch {
 
     let bang = patch
         .create_node(Bang)
-        .with_input(keys!(ControlLeft, KeyS), false)
+        .with_input(keys!(ControlLeft, KeyS))
         .id();
 
     patch.connect(inlet!(print_hello, 0), outlet!(bang, 10));

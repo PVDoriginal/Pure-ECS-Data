@@ -83,11 +83,7 @@ impl<'a, const IN: usize, const OUT: usize> NodeCommands<'a, IN, OUT> {
     //     self
     // }
 
-    pub fn with_input(
-        &mut self,
-        input: fn(ButtonInput<KeyCode>) -> bool,
-        toggle: bool,
-    ) -> &mut Self {
+    pub fn with_input(&mut self, input: fn(ButtonInput<KeyCode>) -> bool) -> &mut Self {
         self.patch.bind_input(self.node_ref, input);
         self
     }
