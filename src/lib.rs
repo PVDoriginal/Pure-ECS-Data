@@ -7,7 +7,8 @@ pub mod nodes;
 pub mod patch;
 
 pub mod prelude {
-    pub use crate::patch::{AddPatch, Patch};
+    pub use crate::nodes::node_impls::*;
+    pub use crate::patch::{AddPatch, NodeRef, Patch};
     pub use crate::{PureDataPlugin, inlet, keys, keys_internal, outlet};
 }
 

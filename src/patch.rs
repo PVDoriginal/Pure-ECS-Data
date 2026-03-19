@@ -1,9 +1,15 @@
-use std::arch::x86_64;
+use bevy::{ecs::system::entity_command::despawn, platform::collections::HashMap, prelude::*};
 
-use crate::nodes::NodeComponent;
-use bevy::prelude::*;
+use crate::nodes::{connections::Connections, node_component::NodeComponent};
 pub struct Patch {
-    pub(crate) nodes: Vec<(Box<dyn NodeComponent + Send + Sync + 'static>, Input)>,
+    pub(crate) nodes: Vec<(
+        Box<dyn NodeComponent + Send + Sync + 'static>,
+        Input,
+        // number of inlets
+        usize,
+        // number of outlets
+        usize,
+    )>,
     pub(crate) connections: Vec<((usize, usize), (usize, usize))>,
 }
 
@@ -30,7 +36,7 @@ impl Patch {
         &'a mut self,
         node: impl NodeComponent + Send + Sync + 'static + crate::nodes::Node<IN, OUT>,
     ) -> NodeCommands<'a, IN, OUT> {
-        self.nodes.push((Box::new(node), default()));
+        self.nodes.push((Box::new(node), default(), IN, OUT));
 
         NodeCommands {
             node_ref: NodeRef(self.nodes.len() - 1),
@@ -98,6 +104,21 @@ macro_rules! keys_internal {
         $keys1.pressed(KeyCode::$head) && keys_internal!($keys1, $($rest)*)
     };
 }
+
+/// This macro generates a function that returns true when all keys are currently pressed, and
+/// the last key has been pressed this frame.
+///
+/// # Example
+/// ```Rs
+/// keys!(ControlLeft, KeyS);
+/// ```
+/// will become
+/// ```Rs
+/// |keys| {
+///     keys.pressed(KeyCode::ControlLeft) &&
+///     keys.just_pressed(KeyCode::KeyS)
+/// }
+/// ```
 #[macro_export]
 macro_rules! keys {
     ($first:ident) => {
@@ -152,28 +173,80 @@ pub struct PatchPlugin;
 impl Plugin for PatchPlugin {
     fn build(&self, app: &mut App) {
         app.add_observer(load_patch);
+        app.add_systems(Last, despawn_old);
     }
 }
 
-#[derive(Component)]
-struct PatchEntity;
+#[derive(Component, Default)]
+pub(crate) struct PatchEntity;
 
 #[derive(Event)]
 struct LoadPatch(pub Patch);
+
+#[derive(Component)]
+struct QueueDespawn;
 
 fn load_patch(
     trigger: On<LoadPatch>,
     old_entities: Query<Entity, With<PatchEntity>>,
     mut commands: Commands,
 ) {
-    info!("loading new patch!");
+    info!("reloading patch!");
 
     for entity in old_entities {
-        commands.entity(entity).despawn();
+        commands.entity(entity).insert(QueueDespawn);
     }
 
-    for (node, input) in &trigger.0.nodes {
-        node.spawn_component(&mut commands).insert(input.clone());
+    let mut hash_in = HashMap::new();
+    let mut hash_out = HashMap::new();
+
+    for (i, (node, input, ins, outs)) in trigger.0.nodes.iter().enumerate() {
+        info!("spawning node {i}");
+
+        let node = node
+            .spawn_component(&mut commands)
+            .insert((PatchEntity, input.clone()))
+            .id();
+
+        for j in 0..*ins {
+            let inlet = commands
+                .spawn(crate::nodes::connections::InletOf(node))
+                .id();
+
+            hash_in.insert((i, j), (inlet, Connections::default()));
+        }
+
+        for j in 0..*outs {
+            let outlet = commands
+                .spawn(crate::nodes::connections::OutletOf(node))
+                .id();
+
+            hash_out.insert((i, j), (outlet, Connections::default()));
+        }
+    }
+
+    for ((node_1, outlet), (node_2, inlet)) in &trigger.0.connections {
+        let outlet = hash_out.get_mut(&(*node_1, *outlet)).unwrap();
+        let inlet = hash_in.get_mut(&(*node_2, *inlet)).unwrap();
+
+        outlet.1.0.push(inlet.0);
+        inlet.1.0.push(outlet.0);
+    }
+
+    for (inlet, connections) in hash_in.values() {
+        commands.entity(*inlet).insert(connections.clone());
+    }
+
+    for (outlet, connections) in hash_out.values() {
+        commands.entity(*outlet).insert(connections.clone());
+    }
+}
+
+fn despawn_old(entities: Query<Entity, With<QueueDespawn>>, mut commands: Commands) {
+    for entity in entities {
+        commands
+            .entity(entity)
+            .queue_silenced(|c: EntityWorldMut<'_>| c.despawn());
     }
 }
 

@@ -1,59 +1,22 @@
 use bevy::prelude::*;
 
-use crate::{nodes::data::Data, patch::Input};
+use crate::{
+    nodes::{
+        connections::{CarriedData, Connections, InletOf, Inlets, OutletOf, Outlets},
+        data::Data,
+        node_impls::*,
+    },
+    patch::Input,
+};
 
+pub mod connections;
 pub mod data;
-
-#[derive(Component)]
-pub struct Outlet {
-    pub node: Entity,
-    pub inlets: Vec<Entity>,
-}
-
-#[derive(Component)]
-pub struct Inlet {
-    pub node: Entity,
-    pub outlets: Vec<Entity>,
-}
+pub mod node_component;
+pub mod node_impls;
 
 pub trait Node<const IN: usize, const OUT: usize> {
     /// Called when the first inlet of the Node receives input.
-    fn process(&self, inputs: &[Data]) -> &[Data];
-}
-
-pub trait NodeComponent {
-    fn spawn_component<'a>(&self, commands: &'a mut Commands) -> EntityCommands<'a>;
-}
-
-#[derive(Component, Default, Clone)]
-pub struct Print(pub Data);
-
-impl Node<1, 0> for Print {
-    fn process(&self, inputs: &[Data]) -> &[Data] {
-        println!("{:?}", inputs[0]);
-        &[]
-    }
-}
-
-impl NodeComponent for Print {
-    fn spawn_component<'a>(&self, commands: &'a mut Commands) -> EntityCommands<'a> {
-        commands.spawn(self.clone())
-    }
-}
-
-#[derive(Component, Default, Clone)]
-pub struct Bang;
-
-impl Node<0, 1> for Bang {
-    fn process(&self, _: &[Data]) -> &[Data] {
-        &[Data::Bang]
-    }
-}
-
-impl NodeComponent for Bang {
-    fn spawn_component<'a>(&self, commands: &'a mut Commands) -> EntityCommands<'a> {
-        commands.spawn(self.clone())
-    }
+    fn process(&self, inputs: [Data; IN]) -> [Data; OUT];
 }
 
 #[derive(Component)]
@@ -66,45 +29,77 @@ pub(crate) struct NodesPlugin;
 
 impl Plugin for NodesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_node::<Print>();
+        app.add_systems(PostUpdate, move_signal);
+        app.add_node::<Print>().add_node::<Bang>();
     }
 }
 
 trait AddNode<const IN: usize, const OUT: usize> {
-    fn add_node<N: Node<IN, OUT> + Component>(&mut self);
+    fn add_node<N: Node<IN, OUT> + Component>(&mut self) -> &mut Self;
 }
 
 impl<const IN: usize, const OUT: usize> AddNode<IN, OUT> for App {
-    fn add_node<N: Node<IN, OUT> + Component>(&mut self) {
+    fn add_node<N: Node<IN, OUT> + Component>(&mut self) -> &mut Self {
         self.add_systems(PreUpdate, activate_nodes::<IN, OUT, N>);
         self.add_systems(Update, process_active_nodes::<IN, OUT, N>);
+        self
     }
 }
 
 fn activate_nodes<const IN: usize, const OUT: usize, N: Node<IN, OUT> + Component>(
-    nodes: Query<(Entity, &N, Option<&Input>, Has<DisableNextFrame>)>,
+    nodes: Query<(Entity, &N, Option<&Input>, Has<DisableNextFrame>, &Inlets)>,
+    inlets: Query<&CarriedData, With<InletOf>>,
     keys: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
 ) {
-    for (entity, _node, input, disable_next_frame) in nodes {
-        if let Some(Input { input }) = input {
-            if input(keys.clone()) {
-                commands.entity(entity).insert(Active);
-                commands.entity(entity).insert(DisableNextFrame);
-            } else {
-                if disable_next_frame {
-                    commands.entity(entity).remove::<DisableNextFrame>();
-                    commands.entity(entity).remove::<Active>();
-                }
+    for (entity, _node, input, disable_next_frame, node_inlets) in nodes {
+        let active_inlet = node_inlets
+            .collection()
+            .first()
+            .is_some_and(|i| !matches!(inlets.get(*i).unwrap().0, Data::None));
+
+        if input.is_some_and(|i| (i.input)(keys.clone())) || active_inlet {
+            commands.entity(entity).insert(Active);
+            commands.entity(entity).insert(DisableNextFrame);
+        } else {
+            if disable_next_frame {
+                commands.entity(entity).remove::<DisableNextFrame>();
+                commands.entity(entity).remove::<Active>();
             }
         }
     }
 }
 
 fn process_active_nodes<const IN: usize, const OUT: usize, N: Node<IN, OUT> + Component>(
-    nodes: Query<&N, With<Active>>,
+    nodes: Query<(&N, &Inlets, &Outlets), With<Active>>,
+    inlets: Query<(&CarriedData, &Connections), With<InletOf>>,
+    mut commands: Commands,
 ) {
-    for node in nodes {
-        node.process(&["lol".into()]);
+    for (node, node_inlets, node_outlets) in nodes {
+        let mut inputs = [const { Data::None }; IN];
+
+        for (i, inlet) in node_inlets.collection().iter().enumerate() {
+            let (inlet_data, _) = inlets.get(*inlet).unwrap();
+            inputs[i] = inlet_data.0.clone();
+        }
+
+        let outputs = node.process(inputs);
+
+        for (i, outlet) in node_outlets.collection().iter().enumerate() {
+            commands
+                .entity(*outlet)
+                .insert(CarriedData(outputs[i].clone()));
+        }
+    }
+}
+
+fn move_signal(
+    outlets: Query<(&CarriedData, &Connections), With<OutletOf>>,
+    mut commands: Commands,
+) {
+    for (data, connections) in outlets {
+        for connection in &connections.0 {
+            commands.entity(*connection).insert((*data).clone());
+        }
     }
 }
