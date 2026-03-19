@@ -15,17 +15,17 @@ pub mod inputs;
 pub mod loading;
 
 pub struct Patch {
-    pub(crate) nodes: Vec<(
-        Box<dyn NodeComponent + Send + Sync + 'static>,
-        Input,
-        Vec<Data>,
-        Internal,
-        // number of inlets
-        usize,
-        // number of outlets
-        usize,
-    )>,
+    pub(crate) nodes: Vec<PatchNode>,
     pub(crate) connections: Vec<((usize, usize), (usize, usize))>,
+}
+
+struct PatchNode {
+    component: Box<dyn NodeComponent + Send + Sync + 'static>,
+    input: Option<Input>,
+    internal_data: Vec<Data>,
+    inlet_data: Vec<Data>,
+    inlets: usize,
+    outlets: usize,
 }
 
 impl Patch {
@@ -40,10 +40,16 @@ impl Patch {
         &'a mut self,
         node: impl NodeComponent + Send + Sync + 'static + crate::node::Node<IN, OUT>,
     ) -> NodeCommands<'a, IN, OUT> {
-        let internal = node.internal().clone();
+        let internal_data = node.internal_data().clone();
 
-        self.nodes
-            .push((Box::new(node), default(), vec![], internal, IN, OUT));
+        self.nodes.push(PatchNode {
+            component: Box::new(node),
+            input: None,
+            internal_data,
+            inlet_data: vec![],
+            inlets: IN,
+            outlets: OUT,
+        });
 
         NodeCommands {
             node_ref: NodeRef(self.nodes.len() - 1),
@@ -72,7 +78,7 @@ impl Patch {
         node: NodeRef<IN, OUT>,
         input: fn(ButtonInput<KeyCode>) -> bool,
     ) {
-        self.nodes[node.0].1 = Input { input };
+        self.nodes[node.0].input = Some(Input { input });
     }
 
     pub fn bind_data<const IN: usize, const OUT: usize, const N: usize>(
@@ -87,15 +93,15 @@ impl Patch {
             );
         }
 
-        self.nodes[node.0].2 = data.to_vec();
+        self.nodes[node.0].inlet_data = data.to_vec();
     }
 
     pub fn bind_internal<const IN: usize, const OUT: usize>(
         &mut self,
         node: NodeRef<IN, OUT>,
-        internal: impl Into<Internal>,
+        internal: Vec<Data>,
     ) {
-        self.nodes[node.0].3 = internal.into();
+        self.nodes[node.0].internal_data = internal;
     }
 }
 
@@ -129,7 +135,7 @@ impl<'a, const IN: usize, const OUT: usize> NodeCommands<'a, IN, OUT> {
         self
     }
 
-    pub fn containing(&mut self, data: impl Into<Internal>) -> &mut Self {
+    pub fn containing(&mut self, data: Vec<Data>) -> &mut Self {
         self.patch.bind_internal(self.node_ref, data);
         self
     }

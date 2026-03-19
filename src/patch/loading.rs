@@ -2,7 +2,7 @@ use bevy::{platform::collections::HashMap, prelude::*};
 
 use crate::{
     node::connections::{CarriedData, Connections, InletType, OtherInlets},
-    patch::Patch,
+    patch::{Patch, PatchNode},
 };
 
 pub struct PatchLoadingPlugin;
@@ -37,17 +37,32 @@ fn load_patch(
     let mut hash_in = HashMap::new();
     let mut hash_out = HashMap::new();
 
-    for (i, (node, input, data, internal_data, ins, outs)) in trigger.0.nodes.iter().enumerate() {
-        let node = node
+    for (
+        i,
+        PatchNode {
+            component,
+            input,
+            internal_data,
+            inlet_data,
+            inlets,
+            outlets,
+        },
+    ) in trigger.0.nodes.iter().enumerate()
+    {
+        let node = component
             .spawn_component(internal_data.clone(), &mut commands)
-            .insert((PatchEntity, input.clone()))
+            .insert(PatchEntity)
             .id();
+
+        if let Some(input) = input {
+            commands.entity(node).insert(input.clone());
+        }
 
         info!("spawning node {i}: {node}");
 
         let mut all_inlets = vec![];
 
-        for j in 0..*ins {
+        for j in 0..*inlets {
             let inlet = commands
                 .spawn(crate::node::connections::InletOf {
                     entity: node,
@@ -60,10 +75,10 @@ fn load_patch(
 
             hash_in.insert((i, j), (inlet, Connections::default()));
 
-            if (*ins - 1 - j) < data.len() {
+            if (*inlets - 1 - j) < inlet_data.len() {
                 commands
                     .entity(inlet)
-                    .insert(CarriedData(data[*ins - 1 - j].clone()));
+                    .insert(CarriedData(inlet_data[*inlets - 1 - j].clone()));
             }
 
             all_inlets.push(inlet);
@@ -75,7 +90,7 @@ fn load_patch(
                 .insert(OtherInlets(all_inlets.clone()));
         }
 
-        for j in 0..*outs {
+        for j in 0..*outlets {
             let outlet = commands
                 .spawn(crate::node::connections::OutletOf(node))
                 .id();

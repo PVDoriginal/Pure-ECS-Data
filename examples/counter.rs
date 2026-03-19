@@ -4,11 +4,11 @@ use pure_ecs_data::prelude::*;
 fn main() {
     let mut app = App::new();
     app.add_plugins((DefaultPlugins, PureDataPlugin));
-    app.add_patch(patch1);
+    app.add_patch(counter);
     app.run();
 }
 
-fn patch1() -> Patch {
+fn counter() -> Patch {
     let mut patch = Patch::default();
 
     let bang = patch.create_node(Bang).with_input(keys_once!(Space)).id();

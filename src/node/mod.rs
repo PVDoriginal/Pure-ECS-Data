@@ -21,6 +21,14 @@ pub mod nodes;
 pub trait Node<const IN: usize, const OUT: usize> {
     /// Called when the first inlet of the Node receives input.
     fn process(&mut self, inputs: [Data; IN]) -> [Data; OUT];
+
+    fn outlet_order() -> [usize; OUT] {
+        let mut array = [0; OUT];
+        for i in 0..OUT {
+            array[i] = i;
+        }
+        array
+    }
 }
 
 #[derive(EntityEvent)]
@@ -41,6 +49,10 @@ impl Plugin for NodesPlugin {
 
         seq!(N in 0..=10 {
             app.add_node::<nodes::Add<N>>();
+        });
+
+        seq!(N in 0..=10 {
+            app.add_node::<nodes::Trigger<N>>();
         });
     }
 }
@@ -119,6 +131,12 @@ fn on_node_activation<
         .iter()
         .map(|e| outlets.get(*e).unwrap())
         .collect();
+
+    let order = N::outlet_order();
+    let mut outlets: Vec<_> = outlets.iter().zip(order.iter()).collect();
+    outlets.sort_by_key(|(_, i)| **i);
+
+    let outlets: Vec<_> = outlets.iter().map(|(c, _)| c).collect();
 
     let mut queue_activation = vec![];
 

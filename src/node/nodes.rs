@@ -79,15 +79,26 @@ impl From<f32> for Number {
 
 impl Node<1, 1> for Number {
     fn process(&mut self, inputs: [Data; 1]) -> [Data; 1] {
-        info!("receiving: {inputs:?}");
-
         if let Data::Num(n) = inputs[0].clone() {
             self.0 = n;
-            info!("setting number to {}", self.0);
         }
 
-        info!("containing: {}", self.0);
-
         [self.0.clone().into()]
+    }
+}
+
+#[derive(Component, Clone)]
+pub struct Trigger<const N: usize>(pub [Data; N]);
+
+impl<const N: usize> Node<1, N> for Trigger<N> {
+    fn process(&mut self, _: [Data; 1]) -> [Data; N] {
+        self.0.clone()
+    }
+    fn outlet_order() -> [usize; N] {
+        let mut order = [0; N];
+        for i in 0..N {
+            order[i] = N - i;
+        }
+        order
     }
 }
