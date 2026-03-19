@@ -1,6 +1,9 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 
-use crate::{node::connections::Connections, patch::Patch};
+use crate::{
+    node::connections::{Connections, InletType},
+    patch::Patch,
+};
 
 pub struct PatchLoadingPlugin;
 
@@ -35,15 +38,23 @@ fn load_patch(
     let mut hash_out = HashMap::new();
 
     for (i, (node, input, ins, outs)) in trigger.0.nodes.iter().enumerate() {
-        info!("spawning node {i}");
-
         let node = node
             .spawn_component(&mut commands)
             .insert((PatchEntity, input.clone()))
             .id();
 
+        info!("spawning node {i}: {node}");
+
         for j in 0..*ins {
-            let inlet = commands.spawn(crate::node::connections::InletOf(node)).id();
+            let inlet = commands
+                .spawn(crate::node::connections::InletOf {
+                    entity: node,
+                    inlet_type: match j {
+                        0 => InletType::Hot,
+                        _ => InletType::Cold,
+                    },
+                })
+                .id();
 
             hash_in.insert((i, j), (inlet, Connections::default()));
         }

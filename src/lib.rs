@@ -14,6 +14,8 @@ pub mod prelude {
     };
 }
 
+pub(crate) const RECURSION_LIMIT: usize = 5_000;
+
 pub struct PureDataPlugin;
 
 impl Plugin for PureDataPlugin {

@@ -5,7 +5,11 @@ use crate::{node::data::Data, patch::loading::PatchEntity};
 #[derive(Component)]
 #[relationship(relationship_target = Inlets)]
 #[require(CarriedData)]
-pub(crate) struct InletOf(pub Entity);
+pub(crate) struct InletOf {
+    #[relationship]
+    pub entity: Entity,
+    pub inlet_type: InletType,
+}
 
 #[derive(Component, Default)]
 #[relationship_target(relationship = InletOf, linked_spawn)]
@@ -13,7 +17,6 @@ pub(crate) struct Inlets(Vec<Entity>);
 
 #[derive(Component)]
 #[relationship(relationship_target = Outlets)]
-#[require(CarriedData)]
 pub(crate) struct OutletOf(pub Entity);
 
 #[derive(Component, Default)]
@@ -26,3 +29,10 @@ pub struct Connections(pub Vec<Entity>);
 
 #[derive(Component, Clone, Default)]
 pub struct CarriedData(pub Data);
+
+#[derive(Default)]
+pub enum InletType {
+    Hot,
+    #[default]
+    Cold,
+}

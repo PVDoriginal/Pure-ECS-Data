@@ -11,11 +11,10 @@ fn main() {
 fn patch1() -> Patch {
     let mut patch = Patch::default();
 
-    let print_hello = patch.create_node(Print("hello world".into())).id();
+    let print = patch.create_node(Print).id();
 
-    let bang = patch.create_node(Bang).with_input(keys_once!(Space)).id();
-
-    patch.connect(outlet!(bang, 0), inlet!(print_hello, 0));
+    patch.connect(outlet!(bang, 0), inlet!(bang2, 0));
+    patch.connect(outlet!(bang2, 0), inlet!(bang, 0));
 
     patch
 }
