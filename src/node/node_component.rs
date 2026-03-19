@@ -1,4 +1,4 @@
-use super::node_impls::*;
+use super::nodes::*;
 use bevy::prelude::*;
 
 pub trait NodeComponent {

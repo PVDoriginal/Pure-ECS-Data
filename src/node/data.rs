@@ -23,3 +23,6 @@ impl From<&str> for Data {
         Data::String(value.into())
     }
 }
+
+#[derive(Default)]
+pub struct DynData(Vec<Data>);

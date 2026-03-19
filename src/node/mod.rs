@@ -1,18 +1,18 @@
 use bevy::prelude::*;
 
 use crate::{
-    nodes::{
+    node::{
         connections::{CarriedData, Connections, InletOf, Inlets, OutletOf, Outlets},
         data::Data,
-        node_impls::*,
+        nodes::*,
     },
-    patch::Input,
+    patch::inputs::Input,
 };
 
 pub mod connections;
 pub mod data;
 pub mod node_component;
-pub mod node_impls;
+pub mod nodes;
 
 pub trait Node<const IN: usize, const OUT: usize> {
     /// Called when the first inlet of the Node receives input.

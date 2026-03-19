@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{nodes::data::Data, patch::PatchEntity};
+use crate::{node::data::Data, patch::loading::PatchEntity};
 
 #[derive(Component)]
 #[relationship(relationship_target = Inlets)]

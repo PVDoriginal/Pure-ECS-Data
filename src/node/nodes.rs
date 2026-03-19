@@ -1,7 +1,7 @@
 use super::Node;
 use bevy::prelude::*;
 
-use crate::nodes::data::Data;
+use crate::node::data::Data;
 
 #[derive(Component, Default, Clone)]
 pub struct Print(pub Data);
