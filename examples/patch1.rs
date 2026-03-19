@@ -12,6 +12,7 @@ fn patch1() -> Patch {
     let mut patch = Patch::default();
 
     let print_hello = patch.create_node(Print("hello world".into())).id();
+
     let bang = patch.create_node(Bang).with_input(keys!(Space)).id();
 
     patch.connect(outlet!(bang, 0), inlet!(print_hello, 0));

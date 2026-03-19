@@ -29,7 +29,7 @@ pub(crate) struct NodesPlugin;
 
 impl Plugin for NodesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, move_signal);
+        app.add_systems(PreUpdate, move_signal);
         app.add_node::<Print>().add_node::<Bang>();
     }
 }
@@ -40,8 +40,10 @@ trait AddNode<const IN: usize, const OUT: usize> {
 
 impl<const IN: usize, const OUT: usize> AddNode<IN, OUT> for App {
     fn add_node<N: Node<IN, OUT> + Component>(&mut self) -> &mut Self {
-        self.add_systems(PreUpdate, activate_nodes::<IN, OUT, N>);
-        self.add_systems(Update, process_active_nodes::<IN, OUT, N>);
+        self.add_systems(Update, activate_nodes::<IN, OUT, N>);
+        self.add_systems(PostUpdate, process_active_nodes::<IN, OUT, N>);
+        self.register_required_components::<N, Inlets>();
+        self.register_required_components::<N, Outlets>();
         self
     }
 }
@@ -71,19 +73,23 @@ fn activate_nodes<const IN: usize, const OUT: usize, N: Node<IN, OUT> + Componen
 }
 
 fn process_active_nodes<const IN: usize, const OUT: usize, N: Node<IN, OUT> + Component>(
-    nodes: Query<(&N, &Inlets, &Outlets), With<Active>>,
+    nodes: Query<(&N, &Inlets, &Outlets, Has<Active>)>,
     inlets: Query<(&CarriedData, &Connections), With<InletOf>>,
     mut commands: Commands,
 ) {
-    for (node, node_inlets, node_outlets) in nodes {
-        let mut inputs = [const { Data::None }; IN];
+    for (node, node_inlets, node_outlets, is_active) in nodes {
+        let mut outputs = [const { Data::None }; OUT];
 
-        for (i, inlet) in node_inlets.collection().iter().enumerate() {
-            let (inlet_data, _) = inlets.get(*inlet).unwrap();
-            inputs[i] = inlet_data.0.clone();
+        if is_active {
+            let mut inputs = [const { Data::None }; IN];
+
+            for (i, inlet) in node_inlets.collection().iter().enumerate() {
+                let (inlet_data, _) = inlets.get(*inlet).unwrap();
+                inputs[i] = inlet_data.0.clone();
+            }
+
+            outputs = node.process(inputs);
         }
-
-        let outputs = node.process(inputs);
 
         for (i, outlet) in node_outlets.collection().iter().enumerate() {
             commands

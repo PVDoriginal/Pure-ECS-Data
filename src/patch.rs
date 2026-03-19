@@ -98,34 +98,40 @@ impl<'a, const IN: usize, const OUT: usize> NodeCommands<'a, IN, OUT> {
 #[macro_export]
 macro_rules! keys_internal {
     ($keys1:ident, $last:ident) => {
-        $keys1.just_pressed(KeyCode::$last)
+        $keys1.pressed(KeyCode::$last)
     };
     ($keys1:ident, $head:ident $($rest:ident)*) => {
         $keys1.pressed(KeyCode::$head) && keys_internal!($keys1, $($rest)*)
     };
 }
 
-/// This macro generates a function that returns true when all keys are currently pressed, and
-/// the last key has been pressed this frame.
-///
-/// # Example
-/// ```Rs
-/// keys!(ControlLeft, KeyS);
-/// ```
-/// will become
-/// ```Rs
-/// |keys| {
-///     keys.pressed(KeyCode::ControlLeft) &&
-///     keys.just_pressed(KeyCode::KeyS)
-/// }
-/// ```
 #[macro_export]
 macro_rules! keys {
+    ($first:ident) => {
+        |keys1| keys1.pressed(KeyCode::$first)
+    };
+    ($first:ident, $($rest:ident),*) => {
+        |keys1| keys1.pressed(KeyCode::$first) && keys_internal!(keys1, $($rest)*)
+    };
+}
+
+#[macro_export]
+macro_rules! keys_once_internal {
+    ($keys1:ident, $last:ident) => {
+        $keys1.just_pressed(KeyCode::$last)
+    };
+    ($keys1:ident, $head:ident $($rest:ident)*) => {
+        $keys1.pressed(KeyCode::$head) && keys_once_internal!($keys1, $($rest)*)
+    };
+}
+
+#[macro_export]
+macro_rules! keys_once {
     ($first:ident) => {
         |keys1| keys1.just_pressed(KeyCode::$first)
     };
     ($first:ident, $($rest:ident),*) => {
-        |keys1| keys1.pressed(KeyCode::$first) && keys_internal!(keys1, $($rest)*)
+        |keys1| keys1.pressed(KeyCode::$first) && keys_once_internal!(keys1, $($rest)*)
     };
 }
 
