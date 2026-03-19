@@ -1,7 +1,7 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 
 use crate::{
-    node::connections::{Connections, InletType},
+    node::connections::{CarriedData, Connections, InletType, OtherInlets},
     patch::Patch,
 };
 
@@ -37,13 +37,15 @@ fn load_patch(
     let mut hash_in = HashMap::new();
     let mut hash_out = HashMap::new();
 
-    for (i, (node, input, ins, outs)) in trigger.0.nodes.iter().enumerate() {
+    for (i, (node, input, data, internal_data, ins, outs)) in trigger.0.nodes.iter().enumerate() {
         let node = node
-            .spawn_component(&mut commands)
+            .spawn_component(internal_data.clone(), &mut commands)
             .insert((PatchEntity, input.clone()))
             .id();
 
         info!("spawning node {i}: {node}");
+
+        let mut all_inlets = vec![];
 
         for j in 0..*ins {
             let inlet = commands
@@ -57,6 +59,20 @@ fn load_patch(
                 .id();
 
             hash_in.insert((i, j), (inlet, Connections::default()));
+
+            if (*ins - 1 - j) < data.len() {
+                commands
+                    .entity(inlet)
+                    .insert(CarriedData(data[*ins - 1 - j].clone()));
+            }
+
+            all_inlets.push(inlet);
+        }
+
+        for inlet in &all_inlets {
+            commands
+                .entity(*inlet)
+                .insert(OtherInlets(all_inlets.clone()));
         }
 
         for j in 0..*outs {

@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
 use crate::{
-    node::node_component::NodeComponent,
+    node::{
+        data::Data,
+        node_component::{Internal, NodeComponent},
+    },
     patch::{
         inputs::Input,
         loading::{LoadPatch, PatchLoadingPlugin},
@@ -15,6 +18,8 @@ pub struct Patch {
     pub(crate) nodes: Vec<(
         Box<dyn NodeComponent + Send + Sync + 'static>,
         Input,
+        Vec<Data>,
+        Internal,
         // number of inlets
         usize,
         // number of outlets
@@ -35,7 +40,10 @@ impl Patch {
         &'a mut self,
         node: impl NodeComponent + Send + Sync + 'static + crate::node::Node<IN, OUT>,
     ) -> NodeCommands<'a, IN, OUT> {
-        self.nodes.push((Box::new(node), default(), IN, OUT));
+        let internal = node.internal().clone();
+
+        self.nodes
+            .push((Box::new(node), default(), vec![], internal, IN, OUT));
 
         NodeCommands {
             node_ref: NodeRef(self.nodes.len() - 1),
@@ -66,6 +74,29 @@ impl Patch {
     ) {
         self.nodes[node.0].1 = Input { input };
     }
+
+    pub fn bind_data<const IN: usize, const OUT: usize, const N: usize>(
+        &mut self,
+        node: NodeRef<IN, OUT>,
+        data: [Data; N],
+    ) {
+        const {
+            assert!(
+                N <= IN,
+                "Node data should be less or equal to the number of inlets of the Node"
+            );
+        }
+
+        self.nodes[node.0].2 = data.to_vec();
+    }
+
+    pub fn bind_internal<const IN: usize, const OUT: usize>(
+        &mut self,
+        node: NodeRef<IN, OUT>,
+        internal: impl Into<Internal>,
+    ) {
+        self.nodes[node.0].3 = internal.into();
+    }
 }
 
 pub struct NodeCommands<'a, const IN: usize, const OUT: usize> {
@@ -90,6 +121,16 @@ impl<'a, const IN: usize, const OUT: usize> NodeCommands<'a, IN, OUT> {
 
     pub fn with_input(&mut self, input: fn(ButtonInput<KeyCode>) -> bool) -> &mut Self {
         self.patch.bind_input(self.node_ref, input);
+        self
+    }
+
+    pub fn with_data<const N: usize>(&mut self, data: [Data; N]) -> &mut Self {
+        self.patch.bind_data(self.node_ref, data);
+        self
+    }
+
+    pub fn containing(&mut self, data: impl Into<Internal>) -> &mut Self {
+        self.patch.bind_internal(self.node_ref, data);
         self
     }
 }

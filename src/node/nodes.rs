@@ -1,14 +1,14 @@
 use super::Node;
 use bevy::prelude::*;
 
-use crate::node::data::Data;
+use crate::node::data::{Data, Num};
 
 #[derive(Component, Default, Clone)]
 pub struct Print;
 
 impl Node<1, 0> for Print {
-    fn process(&self, inputs: [Data; 1]) -> [Data; 0] {
-        println!("{:?}", inputs[0]);
+    fn process(&mut self, inputs: [Data; 1]) -> [Data; 0] {
+        println!("{}", inputs[0]);
         []
     }
 }
@@ -17,20 +17,27 @@ impl Node<1, 0> for Print {
 pub struct Bang;
 
 impl Node<1, 1> for Bang {
-    fn process(&self, _: [Data; 1]) -> [Data; 1] {
+    fn process(&mut self, _: [Data; 1]) -> [Data; 1] {
         [Data::Bang]
     }
 }
 
 #[derive(Component, Default, Clone)]
-pub struct F;
+pub struct F(pub Option<Num>);
 
 impl Node<2, 1> for F {
-    fn process(&self, inputs: [Data; 2]) -> [Data; 1] {
-        match &inputs[1] {
-            Data::None => [inputs[0].clone()],
-            data => [data.clone()],
+    fn process(&mut self, inputs: [Data; 2]) -> [Data; 1] {
+        if matches!(inputs[1], Data::None)
+            && let Data::Num(n) = &inputs[0]
+        {
+            return [n.clone().into()];
         }
+
+        if let Data::Num(n) = &inputs[1] {
+            self.0 = Some(n.clone());
+        }
+
+        [self.0.clone().unwrap_or_default().into()]
     }
 }
 
@@ -38,7 +45,7 @@ impl Node<2, 1> for F {
 pub struct Add<const N: usize>;
 
 impl<const N: usize> Node<N, 1> for Add<N> {
-    fn process(&self, inputs: [Data; N]) -> [Data; 1] {
+    fn process(&mut self, inputs: [Data; N]) -> [Data; 1] {
         let mut res = Data::None;
 
         for input in inputs {
@@ -46,5 +53,41 @@ impl<const N: usize> Node<N, 1> for Add<N> {
         }
 
         [res]
+    }
+}
+
+#[derive(Component, Clone)]
+pub struct Number(pub Num);
+
+impl Default for Number {
+    fn default() -> Number {
+        Number(Num::Int(0))
+    }
+}
+
+impl From<i32> for Number {
+    fn from(value: i32) -> Self {
+        Number(Num::Int(value))
+    }
+}
+
+impl From<f32> for Number {
+    fn from(value: f32) -> Self {
+        Number(Num::Float(value))
+    }
+}
+
+impl Node<1, 1> for Number {
+    fn process(&mut self, inputs: [Data; 1]) -> [Data; 1] {
+        info!("receiving: {inputs:?}");
+
+        if let Data::Num(n) = inputs[0].clone() {
+            self.0 = n;
+            info!("setting number to {}", self.0);
+        }
+
+        info!("containing: {}", self.0);
+
+        [self.0.clone().into()]
     }
 }

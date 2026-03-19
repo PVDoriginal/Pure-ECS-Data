@@ -1,9 +1,12 @@
-use bevy::prelude::*;
+use bevy::{ecs::component::Mutable, prelude::*};
+use seq_macro::seq;
 
 use crate::{
     RECURSION_LIMIT,
     node::{
-        connections::{CarriedData, Connections, InletOf, InletType, Inlets, OutletOf, Outlets},
+        connections::{
+            CarriedData, Connections, InletOf, InletType, Inlets, OtherInlets, OutletOf, Outlets,
+        },
         data::Data,
         nodes::*,
     },
@@ -17,12 +20,13 @@ pub mod nodes;
 
 pub trait Node<const IN: usize, const OUT: usize> {
     /// Called when the first inlet of the Node receives input.
-    fn process(&self, inputs: [Data; IN]) -> [Data; OUT];
+    fn process(&mut self, inputs: [Data; IN]) -> [Data; OUT];
 }
 
 #[derive(EntityEvent)]
 pub(crate) struct ActivateNode {
     pub entity: Entity,
+    pub inputs: Option<Vec<Data>>,
     pub recursion: usize,
 }
 
@@ -30,16 +34,23 @@ pub(crate) struct NodesPlugin;
 
 impl Plugin for NodesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_node::<Print>().add_node::<Bang>();
+        app.add_node::<Print>()
+            .add_node::<Bang>()
+            .add_node::<Number>()
+            .add_node::<F>();
+
+        seq!(N in 0..=10 {
+            app.add_node::<nodes::Add<N>>();
+        });
     }
 }
 
 trait AddNode<const IN: usize, const OUT: usize> {
-    fn add_node<N: Node<IN, OUT> + Component>(&mut self) -> &mut Self;
+    fn add_node<N: Node<IN, OUT> + Component<Mutability = Mutable>>(&mut self) -> &mut Self;
 }
 
 impl<const IN: usize, const OUT: usize> AddNode<IN, OUT> for App {
-    fn add_node<N: Node<IN, OUT> + Component>(&mut self) -> &mut Self {
+    fn add_node<N: Node<IN, OUT> + Component<Mutability = Mutable>>(&mut self) -> &mut Self {
         self.add_systems(Update, activate_nodes_on_input::<IN, OUT, N>);
         self.add_observer(on_node_activation::<IN, OUT, N>);
         self.register_required_components::<N, Inlets>();
@@ -58,6 +69,7 @@ fn activate_nodes_on_input<const IN: usize, const OUT: usize, N: Node<IN, OUT> +
         if (input.input)(keys.clone()) {
             commands.entity(entity).trigger(|entity| ActivateNode {
                 entity,
+                inputs: None,
                 recursion: 0,
             });
         }
@@ -65,10 +77,14 @@ fn activate_nodes_on_input<const IN: usize, const OUT: usize, N: Node<IN, OUT> +
 }
 
 // Triggers when a Node is activated.
-fn on_node_activation<const IN: usize, const OUT: usize, N: Node<IN, OUT> + Component>(
+fn on_node_activation<
+    const IN: usize,
+    const OUT: usize,
+    N: Node<IN, OUT> + Component<Mutability = Mutable>,
+>(
     trigger: On<ActivateNode>,
-    nodes: Query<(&N, &Inlets, &Outlets)>,
-    mut inlets: Query<(&mut CarriedData, &Connections, &InletOf)>,
+    mut nodes: Query<(&mut N, &Inlets, &Outlets)>,
+    mut inlets: Query<(&mut CarriedData, &Connections, &InletOf, &OtherInlets)>,
     outlets: Query<&Connections, With<OutletOf>>,
     mut commands: Commands,
 ) {
@@ -77,17 +93,22 @@ fn on_node_activation<const IN: usize, const OUT: usize, N: Node<IN, OUT> + Comp
         return;
     }
 
-    let Ok((node, node_inlets, node_outlets)) = nodes.get(trigger.entity) else {
+    let Ok((mut node, node_inlets, node_outlets)) = nodes.get_mut(trigger.entity) else {
         return;
     };
 
-    // Gathers inputs from all inlets, emptying them.
+    // Gathers inputs from all inlets.
     let mut inputs = [const { Data::None }; IN];
 
-    for (i, inlet) in node_inlets.collection().iter().enumerate() {
-        let (mut inlet_data, _, _) = inlets.get_mut(*inlet).unwrap();
-        inputs[i] = inlet_data.0.clone();
-        inlet_data.0 = Data::None;
+    if let Some(cached_inputs) = &trigger.inputs {
+        for (i, input) in cached_inputs.iter().enumerate() {
+            inputs[i] = input.clone();
+        }
+    } else {
+        for (i, inlet) in node_inlets.collection().iter().enumerate() {
+            let (inlet_data, _, _, _) = inlets.get(*inlet).unwrap();
+            inputs[i] = inlet_data.0.clone();
+        }
     }
 
     // Converts inputs to outputs.
@@ -99,21 +120,33 @@ fn on_node_activation<const IN: usize, const OUT: usize, N: Node<IN, OUT> + Comp
         .map(|e| outlets.get(*e).unwrap())
         .collect();
 
+    let mut queue_activation = vec![];
+
     // Writes the relevant output to each inlet connected to one of this node's outlets.
     // If input was put in a Hot inlet, queues that node for activation.
     outlets.iter().enumerate().for_each(|(i, c)| {
         for inlet in &c.0 {
-            let (mut inlet_data, _, inlet_of) = inlets.get_mut(*inlet).unwrap();
-            inlet_data.0 = outputs[i].clone();
+            let (mut inlet_data, _, inlet_of, other_inlets) = inlets.get_mut(*inlet).unwrap();
+            inlet_data.0.assign(outputs[i].clone());
 
             if matches!(inlet_of.inlet_type, InletType::Hot) {
-                commands
-                    .entity(inlet_of.entity)
-                    .trigger(|entity| ActivateNode {
-                        entity,
-                        recursion: trigger.recursion + 1,
-                    });
+                queue_activation.push((inlet_of.entity, other_inlets.0.clone()));
             }
         }
     });
+
+    for (queued_node, queued_inlets) in queue_activation {
+        let mut inputs = vec![];
+
+        for inlet in queued_inlets.iter() {
+            let (inlet_data, _, _, _) = inlets.get(*inlet).unwrap();
+            inputs.push(inlet_data.0.clone());
+        }
+
+        commands.entity(queued_node).trigger(|entity| ActivateNode {
+            entity,
+            inputs: Some(inputs),
+            recursion: trigger.recursion + 1,
+        });
+    }
 }

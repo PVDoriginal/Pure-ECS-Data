@@ -7,3 +7,4 @@ edition = "2024"
 bevy = {version = "0.18.1", features = ["hotpatching", "debug"]}
 bevy_seedling = "0.7.1"
 const_guards = "0.1.3"
+seq-macro = "0.3.6"

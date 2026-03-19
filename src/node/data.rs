@@ -5,9 +5,29 @@ pub enum Data {
     #[default]
     None,
     String(String),
+    Num(Num),
+    Bang,
+}
+
+#[derive(Clone, Debug)]
+pub enum Num {
     Int(i32),
     Float(f32),
-    Bang,
+}
+
+impl Default for Num {
+    fn default() -> Num {
+        Num::Int(0)
+    }
+}
+
+impl Display for Num {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Num::Float(n) => write!(f, "{n}"),
+            Num::Int(n) => write!(f, "{n}"),
+        }
+    }
 }
 
 impl Display for Data {
@@ -15,8 +35,7 @@ impl Display for Data {
         match self {
             Data::None => write!(f, "Nothing."),
             Data::String(s) => write!(f, "{s}"),
-            Data::Int(n) => write!(f, "{n}"),
-            Data::Float(n) => write!(f, "{n}"),
+            Data::Num(n) => write!(f, "{n}"),
             Data::Bang => write!(f, "Bang!"),
         }
     }
@@ -28,19 +47,41 @@ impl From<&str> for Data {
     }
 }
 
+impl From<Num> for Data {
+    fn from(value: Num) -> Self {
+        Data::Num(value)
+    }
+}
+
 impl Data {
     fn string(&self) -> String {
         match self.clone() {
             Data::String(string) => string,
-            Data::Int(n) => format!("{n}"),
-            Data::Float(n) => format!("{n}"),
+            Data::Num(n) => format!("{n}"),
             _ => "".into(),
+        }
+    }
+
+    pub fn assign(&mut self, other: Data) {
+        if matches!(self, Data::None) && matches!(other, Data::Bang) {
+            *self = Data::Bang;
+        } else if !matches!(other, Data::None | Data::Bang) {
+            *self = other;
         }
     }
 }
 
-#[derive(Default)]
-pub struct DynData(Vec<Data>);
+impl ops::Add<Num> for Num {
+    type Output = Num;
+    fn add(self, rhs: Num) -> Num {
+        match (self, rhs) {
+            (Num::Int(a), Num::Int(b)) => Num::Int(a + b),
+            (Num::Float(a), Num::Float(b)) => Num::Float(a + b),
+            (Num::Int(a), Num::Float(b)) => Num::Float(a as f32 + b),
+            (Num::Float(a), Num::Int(b)) => Num::Float(a + b as f32),
+        }
+    }
+}
 
 impl ops::Add<Data> for Data {
     type Output = Data;
@@ -63,11 +104,14 @@ impl ops::Add<Data> for Data {
             }
             (Data::Bang, d) => d,
             (d, Data::Bang) => d,
-            (Data::Int(a), Data::Int(b)) => Data::Int(a + b),
-            (Data::Float(a), Data::Float(b)) => Data::Float(a + b),
-            (Data::Int(a), Data::Float(b)) => Data::Float(a as f32 + b),
-            (Data::Float(a), Data::Int(b)) => Data::Float(a + b as f32),
+            (Data::Num(a), Data::Num(b)) => Data::Num(a + b),
         }
+    }
+}
+
+impl ops::AddAssign<Num> for Num {
+    fn add_assign(&mut self, rhs: Num) {
+        *self = self.clone() + rhs;
     }
 }
 

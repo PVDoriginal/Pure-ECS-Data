@@ -36,3 +36,6 @@ pub enum InletType {
     #[default]
     Cold,
 }
+
+#[derive(Component, Default, Clone)]
+pub struct OtherInlets(pub Vec<Entity>);
