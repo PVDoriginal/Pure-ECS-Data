@@ -8,14 +8,22 @@ fn main() {
     app.run();
 }
 
+use pure_ecs_data::node::nodes::Add;
+
 patch!(
     counter;
-    // a = Print;
-    // b = Number { 10 };
 
-    c,d  = Trigger<1> { bang } |# Space, KeyA;
+    a, b = Print;
 
-    d = Bang;
+    c = Number { 32 };
+    lol = Number { 5.3 };
+
+    d = Trigger<4> { bang, bang, 3.0, "lol" };
+
+    e = Add<3>;
+
+    bang = Bang | Space, KeyA;
+    bang2 = Bang |# Space, KeyB;
 );
 
 // fn counter() -> Patch {

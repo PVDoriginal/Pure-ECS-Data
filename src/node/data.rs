@@ -53,6 +53,15 @@ impl From<Num> for Data {
     }
 }
 
+impl From<Data> for Num {
+    fn from(value: Data) -> Self {
+        match value {
+            Data::Num(n) => n,
+            _ => Num::Int(0),
+        }
+    }
+}
+
 impl From<i32> for Data {
     fn from(value: i32) -> Self {
         Data::Num(Num::Int(value))

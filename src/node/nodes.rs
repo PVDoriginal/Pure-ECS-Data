@@ -65,6 +65,12 @@ impl Default for Number {
     }
 }
 
+impl From<Data> for Number {
+    fn from(value: Data) -> Self {
+        Number(value.into())
+    }
+}
+
 impl From<i32> for Number {
     fn from(value: i32) -> Self {
         Number(Num::Int(value))
