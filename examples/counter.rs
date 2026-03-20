@@ -13,7 +13,7 @@ patch!(
     // a = Print;
     // b = Number { 10 };
 
-    c,d  = Trigger<1> { bang };
+    c,d  = Trigger<1> { bang } |# Space, KeyA;
 
     d = Bang;
 );

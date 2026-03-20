@@ -3,8 +3,8 @@ pub mod node_creation;
 #[macro_export]
 macro_rules! patch_instruction {
     ($patch:ident) => {};
-    ($patch:ident $($var_name:ident),* = $node_type:ty $({$($node_args:tt)*})?; $($t:tt)*) => {
-        create_node!($patch $($var_name)* | $node_type | $({$($node_args)*})?);
+    ($patch:ident $($var_name:ident),* = $node_type:ty $({$($node_args:tt)*})? $(| $($inputs_n:ident),+)? $(|# $($inputs_f:ident),+)?; $($t:tt)*) => {
+        create_node!($patch $($var_name)* | $node_type | $({$($node_args)*})? $(| $($inputs_n)*)? $(|# $($inputs_f)+)?);
         patch_instruction!($patch $($t)*);
     };
 }
