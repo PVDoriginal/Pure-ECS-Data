@@ -11,10 +11,12 @@ pub mod prelude {
         data::{Data, Num},
         nodes::*,
     };
+    pub use crate::patch::macros::*;
     pub use crate::patch::{AddPatch, NodeRef, Patch};
     pub use crate::{
         PureDataPlugin, inlet, keys, keys_internal, keys_once, keys_once_internal, outlet,
     };
+    pub use paste::paste;
 }
 
 pub(crate) const RECURSION_LIMIT: usize = 5_000;

@@ -102,3 +102,20 @@ impl<const N: usize> Node<1, N> for Trigger<N> {
         order
     }
 }
+
+impl<const N: usize> From<[Data; N]> for Trigger<N> {
+    fn from(value: [Data; N]) -> Self {
+        Trigger(value)
+    }
+}
+impl From<Data> for Trigger<1> {
+    fn from(value: Data) -> Self {
+        Trigger([value])
+    }
+}
+
+impl<const N: usize> Default for Trigger<N> {
+    fn default() -> Self {
+        Trigger([const { Data::Bang }; N])
+    }
+}

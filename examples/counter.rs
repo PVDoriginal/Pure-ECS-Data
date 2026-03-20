@@ -8,26 +8,36 @@ fn main() {
     app.run();
 }
 
-fn counter() -> Patch {
-    let mut patch = Patch::default();
+patch!(
+    counter;
+    // a = Print;
+    // b = Number { 10 };
 
-    let bang = patch.create_node(Bang).with_input(keys_once!(Space)).id();
-    let f = patch.create_node(F::default()).id();
+    c,d  = Trigger<1> { bang };
 
-    patch.connect(outlet!(bang, 0), inlet!(f, 0));
+    d = Bang;
+);
 
-    let add = patch
-        .create_node(Add::<2>)
-        .with_data([Num::Int(1).into()])
-        .id();
+// fn counter() -> Patch {
+//     let mut patch = Patch::default();
 
-    let print = patch.create_node(Print).id();
+//     let bang = patch.create_node(Bang).with_input(keys_once!(Space)).id();
+//     let f = patch.create_node(F::default()).id();
 
-    patch.connect(outlet!(f, 0), inlet!(add, 0));
+//     patch.connect(outlet!(bang, 0), inlet!(f, 0));
 
-    patch.connect(outlet!(add, 0), inlet!(f, 1));
+//     let add = patch
+//         .create_node(Add::<2>)
+//         .with_data([Num::Int(1).into()])
+//         .id();
 
-    patch.connect(outlet!(add, 0), inlet!(print, 0));
+//     let print = patch.create_node(Print).id();
 
-    patch
-}
+//     patch.connect(outlet!(f, 0), inlet!(add, 0));
+
+//     patch.connect(outlet!(add, 0), inlet!(f, 1));
+
+//     patch.connect(outlet!(add, 0), inlet!(print, 0));
+
+//     patch
+// }

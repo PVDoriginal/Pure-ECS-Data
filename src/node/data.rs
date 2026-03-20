@@ -53,6 +53,18 @@ impl From<Num> for Data {
     }
 }
 
+impl From<i32> for Data {
+    fn from(value: i32) -> Self {
+        Data::Num(Num::Int(value))
+    }
+}
+
+impl From<f32> for Data {
+    fn from(value: f32) -> Self {
+        Data::Num(Num::Float(value))
+    }
+}
+
 impl Data {
     fn string(&self) -> String {
         match self.clone() {

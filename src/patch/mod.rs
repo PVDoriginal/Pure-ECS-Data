@@ -13,6 +13,7 @@ use crate::{
 
 pub mod inputs;
 pub mod loading;
+pub mod macros;
 
 pub struct Patch {
     pub(crate) nodes: Vec<PatchNode>,
