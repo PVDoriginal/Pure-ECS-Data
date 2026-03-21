@@ -4,7 +4,7 @@ use crate::{node::data::Data, patch::loading::PatchEntity};
 
 #[derive(Component)]
 #[relationship(relationship_target = Inlets)]
-#[require(CarriedData)]
+#[require(CarriedData, OtherInlets)]
 pub(crate) struct InletOf {
     #[relationship]
     pub entity: Entity,
@@ -17,6 +17,7 @@ pub(crate) struct Inlets(Vec<Entity>);
 
 #[derive(Component)]
 #[relationship(relationship_target = Outlets)]
+#[require(Connections)]
 pub(crate) struct OutletOf(pub Entity);
 
 #[derive(Component, Default)]

@@ -96,7 +96,7 @@ fn on_node_activation<
 >(
     trigger: On<ActivateNode>,
     mut nodes: Query<(&mut N, &Inlets, &Outlets)>,
-    mut inlets: Query<(&mut CarriedData, &Connections, &InletOf, &OtherInlets)>,
+    mut inlets: Query<(&mut CarriedData, &InletOf, &OtherInlets)>,
     outlets: Query<&Connections, With<OutletOf>>,
     mut commands: Commands,
 ) {
@@ -118,7 +118,7 @@ fn on_node_activation<
         }
     } else {
         for (i, inlet) in node_inlets.collection().iter().enumerate() {
-            let (inlet_data, _, _, _) = inlets.get(*inlet).unwrap();
+            let (inlet_data, _, _) = inlets.get(*inlet).unwrap();
             inputs[i] = inlet_data.0.clone();
         }
     }
@@ -144,7 +144,7 @@ fn on_node_activation<
     // If input was put in a Hot inlet, queues that node for activation.
     outlets.iter().enumerate().for_each(|(i, c)| {
         for inlet in &c.0 {
-            let (mut inlet_data, _, inlet_of, other_inlets) = inlets.get_mut(*inlet).unwrap();
+            let (mut inlet_data, inlet_of, other_inlets) = inlets.get_mut(*inlet).unwrap();
             inlet_data.0.assign(outputs[i].clone());
 
             if matches!(inlet_of.inlet_type, InletType::Hot) {
@@ -157,7 +157,7 @@ fn on_node_activation<
         let mut inputs = vec![];
 
         for inlet in queued_inlets.iter() {
-            let (inlet_data, _, _, _) = inlets.get(*inlet).unwrap();
+            let (inlet_data, _, _) = inlets.get(*inlet).unwrap();
             inputs.push(inlet_data.0.clone());
         }
 

@@ -1,15 +1,29 @@
 use bevy::prelude::*;
 
 #[derive(Component, Clone)]
-pub(crate) struct Input {
+pub struct Input {
+    pub keys: Vec<KeyCode>,
+    pub once: bool,
     pub input: fn(ButtonInput<KeyCode>) -> bool,
 }
 
 impl Default for Input {
     fn default() -> Input {
-        Input { input: |_| false }
+        Input {
+            keys: vec![],
+            once: false,
+            input: |_| false,
+        }
     }
 }
+
+impl PartialEq for Input {
+    fn eq(&self, other: &Self) -> bool {
+        self.keys == other.keys && self.once == other.once
+    }
+}
+
+impl Eq for Input {}
 
 #[macro_export]
 macro_rules! keys_internal {

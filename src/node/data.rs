@@ -1,6 +1,8 @@
 use std::{fmt::Display, ops};
 
-#[derive(Clone, Debug, Default)]
+use bevy::reflect::Reflect;
+
+#[derive(Clone, Debug, Default, PartialEq, Reflect)]
 pub enum Data {
     #[default]
     None,
@@ -9,7 +11,7 @@ pub enum Data {
     Bang,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Reflect)]
 pub enum Num {
     Int(i32),
     Float(f32),

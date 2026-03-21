@@ -1,56 +1,72 @@
-use bevy::prelude::*;
+use bevy::{input::keyboard::Key, platform::collections::HashMap, prelude::*};
 
 use crate::{
     node::{data::Data, node_component::NodeComponent},
     patch::{
         inputs::Input,
-        loading::{LoadPatch, PatchLoadingPlugin},
+        loading::{LivePatch, PatchLoadingPlugin},
     },
+    prelude::Print,
 };
 
 pub mod inputs;
 pub mod loading;
 pub mod macros;
 
+#[derive(Default, Clone)]
 pub struct Patch {
-    pub(crate) nodes: Vec<PatchNode>,
-    pub(crate) connections: Vec<((usize, usize), (usize, usize))>,
+    pub(crate) nodes: HashMap<String, (PatchNode, Ingoing, Outgoing)>,
 }
 
 pub(crate) struct PatchNode {
     component: Box<dyn NodeComponent + Send + Sync + 'static>,
+    component_id: String,
     input: Option<Input>,
     internal_data: Vec<Data>,
-    inlet_data: Vec<Data>,
-    inlets: usize,
-    outlets: usize,
 }
 
-impl Patch {
-    pub fn default() -> Patch {
-        Patch {
-            nodes: vec![],
-            connections: vec![],
+impl Clone for PatchNode {
+    fn clone(&self) -> Self {
+        Self {
+            component: Box::new(Print),
+            component_id: self.component_id.clone(),
+            input: self.input.clone(),
+            internal_data: self.internal_data.clone(),
         }
     }
+}
 
+#[derive(PartialEq, Clone)]
+pub(crate) struct Ingoing(Vec<Data>);
+
+#[derive(PartialEq, Clone)]
+pub(crate) struct Outgoing(Vec<Vec<(String, usize)>>);
+
+impl Patch {
     pub fn create_node<'a, const IN: usize, const OUT: usize>(
         &'a mut self,
+        name: String,
         node: impl NodeComponent + Send + Sync + 'static + crate::node::Node<IN, OUT>,
     ) -> NodeCommands<'a, IN, OUT> {
+        let component_id: String = node.get_type().into();
         let internal_data = node.internal_data().clone();
 
-        self.nodes.push(PatchNode {
-            component: Box::new(node),
-            input: None,
-            internal_data,
-            inlet_data: vec![],
-            inlets: IN,
-            outlets: OUT,
-        });
+        self.nodes.insert(
+            name.clone(),
+            (
+                PatchNode {
+                    component: Box::new(node),
+                    component_id,
+                    input: None,
+                    internal_data,
+                },
+                Ingoing([const { Data::None }; IN].to_vec()),
+                Outgoing([const { vec![] }; OUT].to_vec()),
+            ),
+        );
 
         NodeCommands {
-            node_ref: NodeRef(self.nodes.len() - 1),
+            node_ref: NodeRef(name),
             patch: self,
         }
     }
@@ -67,16 +83,15 @@ impl Patch {
         outlet: Outlet<O, IN2, OUT2>,
         inlet: Inlet<I, IN1, OUT1>,
     ) {
-        self.connections
-            .push(((outlet.node.0, O), (inlet.node.0, I)));
+        self.nodes.get_mut(&outlet.node.0).unwrap().2.0[O].push((inlet.node.0.clone(), I));
     }
 
     pub fn bind_input<const IN: usize, const OUT: usize>(
         &mut self,
         node: NodeRef<IN, OUT>,
-        input: fn(ButtonInput<KeyCode>) -> bool,
+        input: Input,
     ) {
-        self.nodes[node.0].input = Some(Input { input });
+        self.nodes.get_mut(&node.0).unwrap().0.input = Some(input);
     }
 
     pub fn bind_data<const IN: usize, const OUT: usize, const N: usize>(
@@ -91,7 +106,10 @@ impl Patch {
             );
         }
 
-        self.nodes[node.0].inlet_data = data.to_vec();
+        let node = self.nodes.get_mut(&node.0).unwrap();
+        for (i, data) in data.iter().enumerate() {
+            node.1.0[IN - i - 1] = data.clone();
+        }
     }
 
     pub fn bind_data_inlet<const I: usize, const IN: usize, const OUT: usize>(
@@ -99,15 +117,15 @@ impl Patch {
         node: Inlet<I, IN, OUT>,
         data: Data,
     ) {
-        self.nodes[node.node.0].inlet_data[I] = data;
+        self.nodes.get_mut(&node.node.0).unwrap().1.0[I] = data;
     }
 
     pub fn bind_internal<const IN: usize, const OUT: usize>(
         &mut self,
-        node: NodeRef<IN, OUT>,
+        node: &NodeRef<IN, OUT>,
         internal: Vec<Data>,
     ) {
-        self.nodes[node.0].internal_data = internal;
+        self.nodes.get_mut(&node.0).unwrap().0.internal_data = internal;
     }
 }
 
@@ -118,59 +136,46 @@ pub struct NodeCommands<'a, const IN: usize, const OUT: usize> {
 
 impl<'a, const IN: usize, const OUT: usize> NodeCommands<'a, IN, OUT> {
     pub fn id(&self) -> NodeRef<IN, OUT> {
-        self.node_ref
+        self.node_ref.clone()
     }
 
-    // pub fn connect_outlet_to(&mut self, outlet: usize, other: (NodeRef, usize)) -> &mut Self {
-    //     self.patch.connect((self.node_ref, outlet), other);
-    //     self
-    // }
-
-    // pub fn connect_inlet_to(&mut self, inlet: usize, other: (NodeRef, usize)) -> &mut Self {
-    //     self.patch.connect(other, (self.node_ref, inlet));
-    //     self
-    // }
-
-    pub fn with_input(&mut self, input: fn(ButtonInput<KeyCode>) -> bool) -> &mut Self {
-        self.patch.bind_input(self.node_ref, input);
+    pub fn with_input(&mut self, input: Input) -> &mut Self {
+        self.patch.bind_input(self.node_ref.clone(), input);
         self
     }
 
-    pub fn with_input_maybe(
-        &mut self,
-        input: Option<fn(ButtonInput<KeyCode>) -> bool>,
-    ) -> &mut Self {
+    pub fn with_input_maybe(&mut self, input: Option<Input>) -> &mut Self {
         let Some(input) = input else { return self };
 
-        self.patch.bind_input(self.node_ref, input);
+        self.patch.bind_input(self.node_ref.clone(), input);
         self
     }
 
     pub fn with_data<const N: usize>(&mut self, data: [Data; N]) -> &mut Self {
-        self.patch.bind_data(self.node_ref, data);
+        self.patch.bind_data(self.node_ref.clone(), data);
         self
     }
 
     pub fn containing(&mut self, data: Vec<Data>) -> &mut Self {
-        self.patch.bind_internal(self.node_ref, data);
+        self.patch.bind_internal(&self.node_ref, data);
         self
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct NodeRef<const IN: usize, const OUT: usize>(pub(crate) usize);
+#[derive(Clone)]
+pub struct NodeRef<const IN: usize, const OUT: usize>(pub(crate) String);
 
 impl<const IN: usize, const OUT: usize> NodeRef<IN, OUT> {
     pub fn inlet<const I: usize>(&self) -> Inlet<I, IN, OUT> {
         const { assert!(I < IN, "This inlet doesn't exist!") }
 
-        Inlet { node: *self }
+        Inlet { node: self.clone() }
     }
 
     pub fn outlet<const O: usize>(&self) -> Outlet<O, IN, OUT> {
         const { assert!(O < OUT, "This outlet doesn't exist!") }
 
-        Outlet { node: *self }
+        Outlet { node: self.clone() }
     }
 }
 
@@ -212,13 +217,9 @@ pub trait AddPatch {
 
 impl AddPatch for App {
     fn add_patch(&mut self, patch: impl Fn() -> Patch + Send + Sync + 'static) {
-        self.add_systems(
-            Update,
-            move |keys: Res<ButtonInput<KeyCode>>, mut commands: Commands| {
-                if keys.pressed(KeyCode::ControlLeft) && keys.just_pressed(KeyCode::KeyR) {
-                    commands.trigger(LoadPatch(patch()));
-                }
-            },
-        );
+        self.add_systems(Update, move |mut commands: Commands| {
+            let patch = patch();
+            commands.insert_resource(LivePatch(patch));
+        });
     }
 }

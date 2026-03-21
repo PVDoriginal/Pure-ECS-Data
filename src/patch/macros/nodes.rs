@@ -4,26 +4,39 @@ macro_rules! create_node {
 
         initialize_node!(node | $node | $({$($node_args)*})?);
 
-        let mut input: Option<fn(ButtonInput<KeyCode>) -> bool> = None;
+        let mut input: Option<Input> = None;
 
         $(
-            input = Some(|keys| {
-                $(keys.pressed(KeyCode::$inputs_n) && )* true
-            });
+            input = Some(
+                Input {
+                    keys: [$(KeyCode::$inputs_n)*].to_vec(),
+                    once: false,
+                    input: |keys| {
+                        $(keys.pressed(KeyCode::$inputs_n) && )* true
+                    }
+                }
+            )
         )?
 
         $(
-            input = Some(|keys| {
-                inputs_f!(keys $($inputs_f)*)
-            });
+            input = Some(
+                Input {
+                    keys: [$(KeyCode::$inputs_f)*].to_vec(),
+                    once: true,
+                    input: |keys: ButtonInput<KeyCode>| {
+                        inputs_f!(keys $($inputs_f)*)
+                    }
+                }
+
+            );
         )?
 
 
         $(
-        let $name = $patch.create_node(node.clone()).with_input_maybe(input).id();
+        let $name = $patch.create_node(stringify!($name).into(), node.clone()).with_input_maybe(input).id();
         )*
 
-        let nodes = [$($name)*];
+        let nodes = [$($name.clone())*];
 
         $(
             for node in nodes {

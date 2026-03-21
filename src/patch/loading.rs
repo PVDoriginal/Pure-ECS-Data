@@ -1,15 +1,32 @@
+use std::ops::Range;
+
 use bevy::{platform::collections::HashMap, prelude::*};
 
 use crate::{
-    node::connections::{CarriedData, Connections, InletType, OtherInlets},
+    node::connections::{
+        CarriedData, Connections, InletOf, InletType, Inlets, OtherInlets, OutletOf, Outlets,
+    },
     patch::{Patch, PatchNode},
+    prelude::{Data, Input},
 };
 
 pub struct PatchLoadingPlugin;
 
 impl Plugin for PatchLoadingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(load_patch);
+        app.init_resource::<LoadedPatch>();
+        app.init_resource::<PatchMap>();
+        app.init_resource::<LivePatch>();
+        app.init_resource::<UpdateInlets>();
+        app.init_resource::<UpdateOutlets>();
+        app.add_systems(PreUpdate, load_patch);
+        app.add_systems(
+            PreUpdate,
+            (
+                update_outlets.after(load_patch),
+                update_inlets.after(load_patch),
+            ),
+        );
         app.add_systems(Last, despawn_old);
     }
 }
@@ -17,102 +34,313 @@ impl Plugin for PatchLoadingPlugin {
 #[derive(Component, Default)]
 pub(crate) struct PatchEntity;
 
-#[derive(Event)]
-pub(crate) struct LoadPatch(pub Patch);
+#[derive(Resource, Default)]
+pub(crate) struct LoadedPatch(pub Patch);
+
+#[derive(Resource, Default)]
+pub(crate) struct LivePatch(pub Patch);
+
+#[derive(Resource, Default)]
+pub(crate) struct PatchMap(pub HashMap<String, (Entity, Vec<Entity>, Vec<Entity>)>);
 
 #[derive(Component)]
-struct QueueDespawn;
+pub(crate) struct QueueDespawn;
+
+#[derive(Resource, Default)]
+pub(crate) struct UpdateInlets(pub Vec<Entity>);
+
+#[derive(Resource, Default)]
+pub(crate) struct UpdateOutlets(pub Vec<Entity>);
+
+#[derive(Component)]
+pub(crate) struct NodeId(pub String);
 
 fn load_patch(
-    trigger: On<LoadPatch>,
-    old_entities: Query<Entity, With<PatchEntity>>,
+    mut loaded_patch: ResMut<LoadedPatch>,
+    live_patch: Res<LivePatch>,
     mut commands: Commands,
-) {
-    info!("reloading patch!");
 
-    for entity in old_entities {
-        commands.entity(entity).insert(QueueDespawn);
+    mut map: ResMut<PatchMap>,
+
+    mut update_inlets: ResMut<UpdateInlets>,
+    mut update_outlets: ResMut<UpdateOutlets>,
+) {
+    update_inlets.0 = vec![];
+    update_outlets.0 = vec![];
+
+    for (node_name, (live_node, live_ingoing, live_outgoing)) in &live_patch.0.nodes {
+        if let Some((loaded_node, loaded_ingoing, loaded_outgoing)) =
+            loaded_patch.0.nodes.get(node_name)
+        {
+            if loaded_node.component_id != live_node.component_id
+                || loaded_node.internal_data != live_node.internal_data
+            {
+                despawn_loaded_node(node_name.clone(), &mut map.0, &mut commands);
+                let entity = spawn_node(
+                    node_name.clone(),
+                    live_node,
+                    live_ingoing.0.len(),
+                    live_outgoing.0.len(),
+                    &mut map.0,
+                    &mut commands,
+                );
+                update_inlets.0.push(entity);
+                update_outlets.0.push(entity);
+
+                continue;
+            }
+
+            let mapped_node = map.0.get_mut(node_name).unwrap();
+
+            if loaded_node.input != live_node.input {
+                if let Some(input) = live_node.input.clone() {
+                    commands.entity(mapped_node.0).insert(input);
+                } else {
+                    commands.entity(mapped_node.0).remove::<Input>();
+                }
+            }
+
+            if live_ingoing != loaded_ingoing {
+                if live_ingoing.0.len() > loaded_ingoing.0.len() {
+                    add_inlets(
+                        loaded_ingoing.0.len()..live_ingoing.0.len(),
+                        mapped_node,
+                        &mut commands,
+                    );
+                } else if live_ingoing.0.len() < loaded_ingoing.0.len() {
+                    remove_inlets(
+                        live_ingoing.0.len()..loaded_ingoing.0.len(),
+                        mapped_node,
+                        &mut commands,
+                    )
+                }
+
+                update_inlets.0.push(mapped_node.0);
+            }
+
+            if live_outgoing != loaded_outgoing {
+                if live_outgoing.0.len() > loaded_outgoing.0.len() {
+                    add_outlets(
+                        loaded_outgoing.0.len()..live_outgoing.0.len(),
+                        mapped_node,
+                        &mut commands,
+                    );
+                } else if live_outgoing.0.len() < loaded_outgoing.0.len() {
+                    remove_outlets(
+                        live_outgoing.0.len()..loaded_outgoing.0.len(),
+                        mapped_node,
+                        &mut commands,
+                    )
+                }
+
+                update_outlets.0.push(mapped_node.0);
+            }
+        } else {
+            let entity = spawn_node(
+                node_name.clone(),
+                live_node,
+                live_ingoing.0.len(),
+                live_outgoing.0.len(),
+                &mut map.0,
+                &mut commands,
+            );
+            update_inlets.0.push(entity);
+            update_outlets.0.push(entity);
+        }
     }
 
-    let mut hash_in = HashMap::new();
-    let mut hash_out = HashMap::new();
+    for (node_name, _) in &loaded_patch.0.nodes {
+        if live_patch.0.nodes.get(node_name).is_some() {
+            continue;
+        };
 
-    for (
-        i,
-        PatchNode {
-            component,
-            input,
-            internal_data,
-            inlet_data,
-            inlets,
-            outlets,
-        },
-    ) in trigger.0.nodes.iter().enumerate()
-    {
-        let node = component
-            .spawn_component(internal_data.clone(), &mut commands)
-            .insert(PatchEntity)
-            .id();
+        despawn_loaded_node(node_name.clone(), &mut map.0, &mut commands);
+    }
 
-        if let Some(input) = input {
-            commands.entity(node).insert(input.clone());
-        }
+    loaded_patch.0 = live_patch.0.clone();
+}
 
-        info!("spawning node {i}: {node}");
+fn despawn_loaded_node(
+    name: String,
+    map: &mut HashMap<String, (Entity, Vec<Entity>, Vec<Entity>)>,
+    commands: &mut Commands,
+) {
+    info!("Despawning {name}");
+    let (entity, inlets, outlets) = map.get(&name).unwrap();
 
-        let mut all_inlets = vec![];
+    commands.entity(*entity).insert(QueueDespawn);
 
-        for j in 0..*inlets {
-            let inlet = commands
-                .spawn(crate::node::connections::InletOf {
-                    entity: node,
-                    inlet_type: match j {
+    for inlet in inlets {
+        commands.entity(*inlet).insert(QueueDespawn);
+    }
+
+    for outlet in outlets {
+        commands.entity(*outlet).insert(QueueDespawn);
+    }
+
+    map.remove(&name);
+}
+
+fn spawn_node(
+    name: String,
+    node: &PatchNode,
+    n_ingoing: usize,
+    n_outgoing: usize,
+    map: &mut HashMap<String, (Entity, Vec<Entity>, Vec<Entity>)>,
+    commands: &mut Commands,
+) -> Entity {
+    info!("Spawning {name}");
+    let mut node_entity = node
+        .component
+        .spawn_component(node.internal_data.clone(), commands);
+
+    if let Some(input) = node.input.clone() {
+        node_entity.insert(input);
+    }
+
+    node_entity.insert(NodeId(name.clone()));
+
+    let node_entity = node_entity.id();
+
+    let inlet_entities: Vec<_> = (0..n_ingoing)
+        .map(|i| {
+            commands
+                .spawn(InletOf {
+                    entity: node_entity,
+                    inlet_type: match i {
                         0 => InletType::Hot,
                         _ => InletType::Cold,
                     },
                 })
-                .id();
+                .id()
+        })
+        .collect();
 
-            hash_in.insert((i, j), (inlet, Connections::default()));
+    let outlet_entities: Vec<_> = (0..n_outgoing)
+        .map(|_| commands.spawn(OutletOf(node_entity)).id())
+        .collect();
 
-            if (*inlets - 1 - j) < inlet_data.len() {
-                commands
-                    .entity(inlet)
-                    .insert(CarriedData(inlet_data[*inlets - 1 - j].clone()));
-            }
+    map.insert(name, (node_entity, inlet_entities, outlet_entities));
 
-            all_inlets.push(inlet);
-        }
+    node_entity
+}
 
-        for inlet in &all_inlets {
-            commands
-                .entity(*inlet)
-                .insert(OtherInlets(all_inlets.clone()));
-        }
+fn add_inlets(
+    range: Range<usize>,
+    node_map: &mut (Entity, Vec<Entity>, Vec<Entity>),
+    commands: &mut Commands,
+) {
+    for i in range {
+        let inlet = commands
+            .spawn(InletOf {
+                entity: node_map.0.clone(),
+                inlet_type: match i {
+                    0 => InletType::Hot,
+                    _ => InletType::Cold,
+                },
+            })
+            .id();
 
-        for j in 0..*outlets {
-            let outlet = commands
-                .spawn(crate::node::connections::OutletOf(node))
-                .id();
+        node_map.1.push(inlet);
+    }
+}
 
-            hash_out.insert((i, j), (outlet, Connections::default()));
+fn remove_inlets(
+    range: Range<usize>,
+    node_map: &mut (Entity, Vec<Entity>, Vec<Entity>),
+    commands: &mut Commands,
+) {
+    for _ in range {
+        let inlet = node_map.1.pop().unwrap();
+        commands.entity(inlet).remove::<InletOf>();
+        commands.entity(inlet).insert(QueueDespawn);
+    }
+}
+
+fn add_outlets(
+    range: Range<usize>,
+    node_map: &mut (Entity, Vec<Entity>, Vec<Entity>),
+    commands: &mut Commands,
+) {
+    for _ in range {
+        let outlet = commands.spawn(OutletOf(node_map.0.clone())).id();
+        node_map.2.push(outlet);
+    }
+}
+
+fn remove_outlets(
+    range: Range<usize>,
+    node_map: &mut (Entity, Vec<Entity>, Vec<Entity>),
+    commands: &mut Commands,
+) {
+    for _ in range {
+        let outlet = node_map.2.pop().unwrap();
+        commands.entity(outlet).remove::<OutletOf>();
+        commands.entity(outlet).insert(QueueDespawn);
+    }
+}
+
+fn update_inlets(
+    update_inlets: Res<UpdateInlets>,
+    nodes: Query<&NodeId, With<Inlets>>,
+    mut inlets: Query<(&mut CarriedData, &mut OtherInlets), With<InletOf>>,
+    patch: Res<LoadedPatch>,
+    map: Res<PatchMap>,
+) {
+    for update_inlet in &update_inlets.0 {
+        let Ok(node_id) = nodes.get(*update_inlet) else {
+            continue;
+        };
+
+        let inlet_entities = &map.0.get(&node_id.0).unwrap().1;
+        let inlets_data = &patch.0.nodes.get(&node_id.0).unwrap().1.0;
+
+        for (i, data) in inlets_data.iter().enumerate() {
+            let mut inlet_data = inlets.get_mut(inlet_entities[i]).unwrap();
+            inlet_data.0.0.assign(data.clone());
+            inlet_data.1.0 = inlet_entities.clone();
         }
     }
+}
 
-    for ((node_1, outlet), (node_2, inlet)) in &trigger.0.connections {
-        let outlet = hash_out.get_mut(&(*node_1, *outlet)).unwrap();
-        let inlet = hash_in.get_mut(&(*node_2, *inlet)).unwrap();
+fn update_outlets(
+    update_outlets: Res<UpdateOutlets>,
+    nodes: Query<&NodeId, With<Outlets>>,
+    mut outlets: Query<&mut Connections, With<OutletOf>>,
+    patch: Res<LoadedPatch>,
+    map: Res<PatchMap>,
+) {
+    for update_outlet in &update_outlets.0 {
+        let Ok(node_id) = nodes.get(*update_outlet) else {
+            continue;
+        };
 
-        outlet.1.0.push(inlet.0);
-        inlet.1.0.push(outlet.0);
-    }
+        let outlet_entities = &map.0.get(&node_id.0).unwrap().2;
+        let outlet_connections: Vec<_> = patch
+            .0
+            .nodes
+            .get(&node_id.0)
+            .unwrap()
+            .2
+            .0
+            .iter()
+            .map(|connections| {
+                Connections(
+                    connections
+                        .iter()
+                        .map(|(name, i)| {
+                            let mapped_node = map.0.get(name).unwrap();
+                            mapped_node.1[*i]
+                        })
+                        .collect(),
+                )
+            })
+            .collect();
 
-    for (inlet, connections) in hash_in.values() {
-        commands.entity(*inlet).insert(connections.clone());
-    }
-
-    for (outlet, connections) in hash_out.values() {
-        commands.entity(*outlet).insert(connections.clone());
+        for (i, data) in outlet_connections.iter().enumerate() {
+            let mut current_data = outlets.get_mut(outlet_entities[i]).unwrap();
+            *current_data = data.clone();
+        }
     }
 }
 

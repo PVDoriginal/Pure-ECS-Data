@@ -11,6 +11,7 @@ pub mod prelude {
         data::{Data, Num},
         nodes::*,
     };
+    pub use crate::patch::inputs::Input;
     pub use crate::patch::macros::*;
     pub use crate::patch::{AddPatch, NodeRef, Patch};
     pub use crate::{

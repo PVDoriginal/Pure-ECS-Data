@@ -1,3 +1,5 @@
+use std::any::{Any, TypeId};
+
 use crate::{node::data::Num, prelude::Data};
 
 use super::nodes::*;
@@ -12,7 +14,7 @@ impl From<Num> for Internal {
     }
 }
 
-pub trait NodeComponent {
+pub trait NodeComponent: PartialReflect {
     fn spawn_component<'a>(
         &self,
         data: Vec<Data>,
@@ -21,6 +23,10 @@ pub trait NodeComponent {
 
     fn internal_data(&self) -> Vec<Data> {
         vec![]
+    }
+
+    fn get_type(&self) -> &str {
+        self.reflect_type_ident().unwrap()
     }
 }
 

@@ -13,13 +13,14 @@ patch!(
 
     bang = Bang |# Space;
     print = Print;
-    add = Plus<2> [1];
+    print2 = Print;
+    plus = Plus<2> [1];
 
     f = F;
 
     bang -> f;
-    f -> add;
-    add -> f[1], print;
+    f -> plus;
+    plus -> f[1], print, print2;
 );
 
 // fn counter() -> Patch {

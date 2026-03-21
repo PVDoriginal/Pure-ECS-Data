@@ -21,7 +21,7 @@ use crate::node::data::{Data, Num};
 /// ```
 ///
 /// Outputs "Hello World" each time you press `Space`.
-#[derive(Component, Default, Clone)]
+#[derive(Component, Default, Clone, Reflect)]
 pub struct Print;
 
 impl Node<1, 0> for Print {
@@ -50,7 +50,7 @@ impl Node<1, 0> for Print {
 /// bang -> print;
 /// ```
 /// Prints "Bang" each time you press `Space`.
-#[derive(Component, Default, Clone)]
+#[derive(Component, Default, Clone, Reflect)]
 pub struct Bang;
 
 impl Node<1, 1> for Bang {
@@ -82,7 +82,7 @@ impl Node<1, 1> for Bang {
 /// add -> f[1], print;
 /// ```
 /// Increments a number by 1 and prints it each time you press `Space`.
-#[derive(Component, Default, Clone)]
+#[derive(Component, Default, Clone, Reflect)]
 pub struct F(pub Option<Num>);
 
 impl Node<2, 1> for F {
@@ -124,7 +124,7 @@ impl Node<2, 1> for F {
 /// plus -> print;
 /// ```
 /// Prints "7" each time you press `Space`.
-#[derive(Component, Default, Clone)]
+#[derive(Component, Default, Clone, Reflect)]
 pub struct Plus<const N: usize>;
 
 impl<const N: usize> Node<N, 1> for Plus<N> {
@@ -147,7 +147,7 @@ impl<const N: usize> Node<N, 1> for Plus<N> {
 ///
 /// `In`: 1
 /// `Out`: 1
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Reflect)]
 pub struct Number(pub Num);
 
 impl Default for Number {
@@ -184,7 +184,7 @@ impl Node<1, 1> for Number {
     }
 }
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Reflect)]
 pub struct Trigger<const N: usize>(pub [Data; N]);
 
 impl<const N: usize> Node<1, N> for Trigger<N> {
