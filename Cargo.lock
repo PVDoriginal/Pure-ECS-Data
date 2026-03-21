@@ -4542,6 +4542,7 @@ dependencies = [
  "bevy",
  "bevy_seedling",
  "const_guards",
+ "firewheel",
  "paste",
  "seq-macro",
 ]

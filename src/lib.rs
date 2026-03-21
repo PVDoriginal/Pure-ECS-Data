@@ -7,7 +7,7 @@ pub mod node;
 pub mod patch;
 
 pub mod prelude {
-    pub use crate::node::node_component::NodeComponent;
+    pub use crate::node::NodeComponent;
     pub use crate::node::nodes;
     pub use crate::node::{
         Node,

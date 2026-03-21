@@ -1,12 +1,12 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 
 use crate::{
-    node::{data::Data, node_component::NodeComponent},
+    node::nodes::print::*,
+    node::{NodeComponent, data::Data},
     patch::{
         inputs::Input,
         loading::{LivePatch, PatchLoadingPlugin},
     },
-    prelude::Print,
 };
 
 use crate::node::Node;

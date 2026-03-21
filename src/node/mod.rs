@@ -1,6 +1,3 @@
-use bevy::{ecs::component::Mutable, prelude::*};
-use seq_macro::seq;
-
 use crate::{
     RECURSION_LIMIT,
     node::{
@@ -12,10 +9,10 @@ use crate::{
     },
     patch::inputs::Input,
 };
+use bevy::{ecs::component::Mutable, prelude::*};
 
 pub mod connections;
 pub mod data;
-pub mod node_component;
 pub mod nodes;
 
 pub trait Node<const IN: usize, const OUT: usize> {
@@ -39,6 +36,22 @@ pub trait Node<const IN: usize, const OUT: usize> {
     }
 }
 
+pub trait NodeComponent: PartialReflect {
+    fn spawn_component<'a>(
+        &self,
+        data: Vec<Data>,
+        commands: &'a mut Commands,
+    ) -> EntityCommands<'a>;
+
+    fn internal_data(&self) -> Vec<Data> {
+        vec![]
+    }
+
+    fn get_type(&self) -> &str {
+        self.reflect_type_ident().unwrap()
+    }
+}
+
 #[derive(EntityEvent)]
 pub(crate) struct ActivateNode {
     pub entity: Entity,
@@ -50,19 +63,7 @@ pub(crate) struct NodesPlugin;
 
 impl Plugin for NodesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_node::<Print>()
-            .add_node::<Bang>()
-            .add_node::<Number>()
-            .add_node::<F>()
-            .add_node::<nodes::Message>();
-
-        seq!(N in 0..=10 {
-            app.add_node::<nodes::Sum<N>>();
-        });
-
-        seq!(N in 0..=10 {
-            app.add_node::<nodes::Trigger<N>>();
-        });
+        app.add_plugins((ControlNodesPlugin, SignalNodesPlugin));
     }
 }
 
