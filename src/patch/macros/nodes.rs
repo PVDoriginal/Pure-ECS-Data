@@ -1,9 +1,8 @@
 #[macro_export]
 macro_rules! create_node {
-    ($patch:ident $($name:ident)* | $node:ty | $({$($node_args:tt)*})? $(| $($inputs_n:ident)+)? $(|# $($inputs_f:ident)+)?) => {
+    ($patch:ident $($name:ident)* | $node:ty | $({$($node_args:tt)*})? $([$($inlet_data:tt)+])? $(| $($inputs_n:ident)+)? $(|# $($inputs_f:ident)+)?) => {
 
         initialize_node!(node | $node | $({$($node_args)*})?);
-
 
         let mut input: Option<fn(ButtonInput<KeyCode>) -> bool> = None;
 
@@ -21,9 +20,16 @@ macro_rules! create_node {
 
 
         $(
-        let mut $name = $patch.create_node(node.clone()).with_input_maybe(input);
+        let $name = $patch.create_node(node.clone()).with_input_maybe(input).id();
         )*
 
+        let nodes = [$($name)*];
+
+        $(
+            for node in nodes {
+                bind_inlets!($patch node <- $($inlet_data)+);
+            }
+        )?
     };
 }
 
@@ -63,6 +69,17 @@ macro_rules! initialize_node {
     };
 }
 
+#[macro_export]
+macro_rules! bind_inlets {
+    ($patch:ident $inlet:ident [$index:expr] <- $data:tt) => {
+        $patch.bind_data_inlet(get_inlet!($inlet[$index]), filter_args!($data));
+    };
+    ($patch:ident $inlet:ident <- $($data:tt)*) => {
+        $patch.bind_data($inlet, [$(filter_args!($data)),*]);
+    };
+}
+
+pub use bind_inlets;
 pub use create_node;
 pub use filter_args;
 pub use initialize_node;

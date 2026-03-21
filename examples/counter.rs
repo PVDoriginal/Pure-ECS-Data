@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use pure_ecs_data::prelude::*;
 
+use pure_ecs_data::node::nodes::Add;
+
 fn main() {
     let mut app = App::new();
     app.add_plugins((DefaultPlugins, PureDataPlugin));
@@ -8,22 +10,18 @@ fn main() {
     app.run();
 }
 
-use pure_ecs_data::node::nodes::Add;
-
 patch!(
     counter;
 
-    a, b = Print;
+    bang = Bang |# Space;
+    print = Print;
+    add = Add<2> [1];
 
-    c = Number { 32 };
-    lol = Number { 5.3 };
+    f = F;
 
-    d = Trigger<4> { bang, bang, 3.0, "lol" };
-
-    e = Add<3>;
-
-    bang = Bang | Space, KeyA;
-    bang2 = Bang |# Space, KeyB;
+    bang -> f;
+    f -> add;
+    add -> f[1], print;
 );
 
 // fn counter() -> Patch {

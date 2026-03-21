@@ -1,10 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    node::{
-        data::Data,
-        node_component::{Internal, NodeComponent},
-    },
+    node::{data::Data, node_component::NodeComponent},
     patch::{
         inputs::Input,
         loading::{LoadPatch, PatchLoadingPlugin},
@@ -20,7 +17,7 @@ pub struct Patch {
     pub(crate) connections: Vec<((usize, usize), (usize, usize))>,
 }
 
-struct PatchNode {
+pub(crate) struct PatchNode {
     component: Box<dyn NodeComponent + Send + Sync + 'static>,
     input: Option<Input>,
     internal_data: Vec<Data>,
@@ -95,6 +92,14 @@ impl Patch {
         }
 
         self.nodes[node.0].inlet_data = data.to_vec();
+    }
+
+    pub fn bind_data_inlet<const I: usize, const IN: usize, const OUT: usize>(
+        &mut self,
+        node: Inlet<I, IN, OUT>,
+        data: Data,
+    ) {
+        self.nodes[node.node.0].inlet_data[I] = data;
     }
 
     pub fn bind_internal<const IN: usize, const OUT: usize>(
@@ -183,10 +188,12 @@ macro_rules! outlet {
     };
 }
 
+#[derive(Clone)]
 pub struct Inlet<const I: usize, const IN: usize, const OUT: usize> {
     node: NodeRef<IN, OUT>,
 }
 
+#[derive(Clone)]
 pub struct Outlet<const O: usize, const IN: usize, const OUT: usize> {
     node: NodeRef<IN, OUT>,
 }
