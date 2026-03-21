@@ -36,7 +36,7 @@ impl NodeComponent for Bang {
     }
 }
 
-impl<const N: usize> NodeComponent for super::nodes::Add<N> {
+impl<const N: usize> NodeComponent for super::nodes::Plus<N> {
     fn spawn_component<'a>(&self, _: Vec<Data>, commands: &'a mut Commands) -> EntityCommands<'a> {
         commands.spawn(self.clone())
     }

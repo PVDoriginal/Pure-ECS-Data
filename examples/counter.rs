@@ -1,8 +1,6 @@
 use bevy::prelude::*;
 use pure_ecs_data::prelude::*;
 
-use pure_ecs_data::node::nodes::Add;
-
 fn main() {
     let mut app = App::new();
     app.add_plugins((DefaultPlugins, PureDataPlugin));
@@ -15,7 +13,7 @@ patch!(
 
     bang = Bang |# Space;
     print = Print;
-    add = Add<2> [1];
+    add = Plus<2> [1];
 
     f = F;
 

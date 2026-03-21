@@ -16,7 +16,7 @@ fn patch() -> Patch {
     let num_1 = patch.create_node(Number::from(3)).id();
     let num_2 = patch.create_node(Number::from(5)).id();
 
-    let add = patch.create_node(Add::<2>).id();
+    let add = patch.create_node(Plus::<2>).id();
 
     let print = patch.create_node(Print).id();
 

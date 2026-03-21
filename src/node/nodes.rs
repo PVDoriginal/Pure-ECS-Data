@@ -3,6 +3,24 @@ use bevy::prelude::*;
 
 use crate::node::data::{Data, Num};
 
+/// Prints the data received in its inlet.
+///
+/// `In`: 1
+/// `Out`: 0
+///
+/// ### Constructor
+///
+/// ```Rs
+/// node = Print;
+/// ```
+///
+/// ### Example
+///
+/// ```Rs
+/// print = Print ["Hello world!"] |# Space;
+/// ```
+///
+/// Outputs "Hello World" each time you press `Space`.
 #[derive(Component, Default, Clone)]
 pub struct Print;
 
@@ -13,6 +31,25 @@ impl Node<1, 0> for Print {
     }
 }
 
+/// Outputs a Bang.
+///
+/// Most commonly, this is used by binding input to it.
+///
+/// `In`: 1
+/// `Out`: 1
+///
+/// ### Constructor
+/// ```Rs
+/// node = Bang;
+/// ```
+///
+/// ### Example
+/// ```Rs
+/// bang = Bang |# Space;
+/// print = Print;
+/// bang -> print;
+/// ```
+/// Prints "Bang" each time you press `Space`.
 #[derive(Component, Default, Clone)]
 pub struct Bang;
 
@@ -22,6 +59,29 @@ impl Node<1, 1> for Bang {
     }
 }
 
+/// Outputs and stores the data from its second inlet.
+///
+/// If the second inlet is empty, will simply output the data from the first inlet.
+///
+/// `In`: 2
+/// `Out`: 1
+///
+/// ### Constructor
+/// ```Rs
+/// node = F;
+/// ```
+///
+/// ### Example
+/// ```Rs
+/// bang = Bang |# Space;
+/// print = Print;
+/// add = Add<2> [1];
+/// f = F;
+/// bang -> f;
+/// f -> add;
+/// add -> f[1], print;
+/// ```
+/// Increments a number by 1 and prints it each time you press `Space`.
 #[derive(Component, Default, Clone)]
 pub struct F(pub Option<Num>);
 
@@ -41,10 +101,33 @@ impl Node<2, 1> for F {
     }
 }
 
+/// Outputs the sum of the data from all N inlets.
+///
+/// `In`: N
+/// `Out`: 1
+///
+/// ### Constructor
+/// ```Rs
+/// node = Plus<N>;
+/// ```
+///
+/// ### Example
+/// ```Rs
+/// a = Number { 5 };
+/// plus = Plus<2> [2];
+///
+/// print = Print;
+/// bang = Bang |# Space;
+///
+/// bang -> a;
+/// a -> plus;
+/// plus -> print;
+/// ```
+/// Prints "7" each time you press `Space`.
 #[derive(Component, Default, Clone)]
-pub struct Add<const N: usize>;
+pub struct Plus<const N: usize>;
 
-impl<const N: usize> Node<N, 1> for Add<N> {
+impl<const N: usize> Node<N, 1> for Plus<N> {
     fn process(&mut self, inputs: [Data; N]) -> [Data; 1] {
         let mut res = Data::None;
 
@@ -56,6 +139,14 @@ impl<const N: usize> Node<N, 1> for Add<N> {
     }
 }
 
+/// Contains and outputs a number.
+///
+/// When receiving another number, it will store that number instead.
+///
+/// Can be initialized with a number already inside.  
+///
+/// `In`: 1
+/// `Out`: 1
 #[derive(Component, Clone)]
 pub struct Number(pub Num);
 
