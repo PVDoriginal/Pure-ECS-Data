@@ -108,26 +108,26 @@ impl Node<2, 1> for F {
 ///
 /// ### Constructor
 /// ```Rs
-/// node = Plus<N>;
+/// node = Sum<N>;
 /// ```
 ///
 /// ### Example
 /// ```Rs
 /// a = Number { 5 };
-/// plus = Plus<2> [2];
+/// sum = Sum<2> [2];
 ///
 /// print = Print;
 /// bang = Bang |# Space;
 ///
 /// bang -> a;
-/// a -> plus;
-/// plus -> print;
+/// a -> sum;
+/// sum -> print;
 /// ```
 /// Prints "7" each time you press `Space`.
 #[derive(Component, Default, Clone, Reflect)]
-pub struct Plus<const N: usize>;
+pub struct Sum<const N: usize>;
 
-impl<const N: usize> Node<N, 1> for Plus<N> {
+impl<const N: usize> Node<N, 1> for Sum<N> {
     fn process(&mut self, inputs: [Data; N]) -> [Data; 1] {
         let mut res = Data::None;
 

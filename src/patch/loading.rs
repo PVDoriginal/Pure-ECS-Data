@@ -7,7 +7,7 @@ use crate::{
         CarriedData, Connections, InletOf, InletType, Inlets, OtherInlets, OutletOf, Outlets,
     },
     patch::{Patch, PatchNode},
-    prelude::{Data, Input},
+    prelude::Input,
 };
 
 pub struct PatchLoadingPlugin;

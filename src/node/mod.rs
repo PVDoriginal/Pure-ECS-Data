@@ -48,7 +48,7 @@ impl Plugin for NodesPlugin {
             .add_node::<F>();
 
         seq!(N in 0..=10 {
-            app.add_node::<nodes::Plus<N>>();
+            app.add_node::<nodes::Sum<N>>();
         });
 
         seq!(N in 0..=10 {
