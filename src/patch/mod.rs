@@ -1,15 +1,13 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 
 use crate::{
-    node::nodes::print::*,
+    node::nodes::Print,
     node::{NodeComponent, data::Data},
     patch::{
         inputs::Input,
         loading::{LivePatch, PatchLoadingPlugin},
     },
 };
-
-use crate::node::Node;
 
 pub mod inputs;
 pub mod loading;

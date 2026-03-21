@@ -1,8 +1,8 @@
 use super::Node;
 use bevy::prelude::*;
 
-pub mod control;
-pub mod signal;
+mod control;
+mod signal;
 
 pub use control::*;
 pub use signal::*;

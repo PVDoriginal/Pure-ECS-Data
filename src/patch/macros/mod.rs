@@ -4,8 +4,8 @@ pub mod nodes;
 #[macro_export]
 macro_rules! patch_instruction {
     ($patch:ident) => {};
-    ($patch:ident $($var_name:ident),* = $node_type:ty $({$($node_args:tt)*})? $([$($inlet_data:tt),+])? $(| $($inputs_n:ident),+)? $(|# $($inputs_f:ident),+)?; $($t:tt)*) => {
-        create_node!($patch $($var_name)* | $node_type | $({$($node_args)*})? $([$($inlet_data)+])? $(| $($inputs_n)*)? $(|# $($inputs_f)+)?);
+    ($patch:ident $($var_name:ident),* = $node_type:ident $(<$node_generic:literal>)? $({$($node_args:tt)*})? $([$($inlet_data:tt),+])? $(| $($inputs_n:ident),+)? $(# $($inputs_f:ident),+)?; $($t:tt)*) => {
+        create_node!($patch $($var_name)* | $node_type $(<$node_generic>)? | $({$($node_args)*})? $([$($inlet_data)+])? $(| $($inputs_n)*)? $(# $($inputs_f)+)?);
         patch_instruction!($patch $($t)*);
     };
     ($patch:ident $($outlets:ident $([$outs:expr])?),* -> $inlet:ident $([$in:expr])?; $($t:tt)*) => {

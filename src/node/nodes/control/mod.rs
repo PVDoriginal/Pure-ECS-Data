@@ -1,25 +1,25 @@
-pub mod print;
+mod print;
 pub use print::*;
 
-pub mod bang;
+mod bang;
 pub use bang::*;
 
-pub mod f;
+mod f;
 pub use f::*;
 
-pub mod sum;
+mod sum;
 pub use sum::*;
 
-pub mod number;
+mod number;
 pub use number::*;
 
-pub mod trigger;
+mod trigger;
 pub use trigger::*;
 
-pub mod message;
-pub use message::*;
+mod msg;
+pub use msg::*;
 
-pub use super::*;
+use super::*;
 
 pub(crate) struct ControlNodesPlugin;
 
@@ -29,7 +29,7 @@ impl Plugin for ControlNodesPlugin {
             .add_node::<Bang>()
             .add_node::<Number>()
             .add_node::<F>()
-            .add_node::<message::Message>();
+            .add_node::<Msg>();
 
         seq!(N in 0..=10 {
             app.add_node::<Sum<N>>();

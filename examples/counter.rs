@@ -11,13 +11,14 @@ fn main() {
 patch!(
     counter;
 
-    bang = Bang |# Space;
+    bang = Bang # Space;
     print = Print;
     plus = Sum<2> [1];
 
     f = F;
 
     bang -> f;
+
     f -> plus;
     plus -> f[1], print;
 );

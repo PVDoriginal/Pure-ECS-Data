@@ -17,7 +17,9 @@ pub mod nodes;
 
 pub trait Node<const IN: usize, const OUT: usize> {
     /// Called when the first inlet of the Node receives input.
-    fn process(&mut self, inputs: [Data; IN]) -> [Data; OUT];
+    fn process(&mut self, _inputs: [Data; IN]) -> [Data; OUT] {
+        [const { Data::None }; OUT]
+    }
 
     fn outlet_order() -> [usize; OUT] {
         let mut array = [0; OUT];

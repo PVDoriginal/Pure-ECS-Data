@@ -1,9 +1,9 @@
 pub use crate::prelude::*;
 #[macro_export]
 macro_rules! create_node {
-    ($patch:ident $($name:ident)* | $node:ty | $({$($node_args:tt)*})? $([$($inlet_data:tt)+])? $(| $($inputs_n:ident)+)? $(|# $($inputs_f:ident)+)?) => {
+    ($patch:ident $($name:ident)* | $node:ident $(<$generic:literal>)? | $({$($node_args:tt)*})? $([$($inlet_data:tt)+])? $(| $($inputs_n:ident)+)? $(# $($inputs_f:ident)+)?) => {
 
-        initialize_node!(node | $node | $({$($node_args)*})?);
+        initialize_node!(node | $node $(<$generic>)? | $({$($node_args)*})?);
 
         let mut input: Option<Input> = None;
 
@@ -69,16 +69,16 @@ macro_rules! filter_args {
 
 #[macro_export]
 macro_rules! initialize_node {
-    ($name: ident | $node:ty | ) => {
-        let $name = <$node>::default();
+    ($name: ident | $node:ident $(<$generic:literal>)? | ) => {
+        let $name = nodes::$node$(::<$generic>)?::default();
     };
     ($
-        name: ident | $node:ty | {$head:tt, $($tail:tt),*}) => {
+        name: ident | $node:ident $(<$generic:literal>)? | {$head:tt, $($tail:tt),*}) => {
         let args = [filter_args!($head), $(filter_args!($tail)),*];
-        let $name = <$node>::from(args);
+        let $name = nodes::$node$(::<$generic>)?::from(args);
     };
-    ($name: ident | $node:ty | {$head:tt}) => {
-        let $name = <$node>::from(filter_args!($head));
+    ($name: ident | $node:ident $(<$generic:literal>)? | {$head:tt}) => {
+        let $name = nodes::$node$(::<$generic>)?::from(filter_args!($head));
     };
 }
 
