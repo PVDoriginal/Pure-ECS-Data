@@ -91,3 +91,17 @@ impl<const N: usize> NodeComponent for Trigger<N> {
         self.0.to_vec()
     }
 }
+
+impl NodeComponent for super::nodes::Message {
+    fn spawn_component<'a>(
+        &self,
+        data: Vec<Data>,
+        commands: &'a mut Commands,
+    ) -> EntityCommands<'a> {
+        commands.spawn(super::nodes::Message::from(data[0].clone()))
+    }
+
+    fn internal_data(&self) -> Vec<Data> {
+        vec![self.0.clone()]
+    }
+}

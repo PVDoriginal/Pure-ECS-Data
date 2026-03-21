@@ -216,3 +216,26 @@ impl<const N: usize> Default for Trigger<N> {
         Trigger([const { Data::Bang }; N])
     }
 }
+
+#[derive(Component, Clone, Reflect)]
+pub struct Message(pub Data);
+
+impl Default for Message {
+    fn default() -> Self {
+        Message(Data::None)
+    }
+}
+
+impl From<Data> for Message {
+    fn from(value: Data) -> Self {
+        Message(value)
+    }
+}
+
+impl Node<1, 1> for Message {
+    fn process(&mut self, inputs: [Data; 1]) -> [Data; 1] {
+        let mut data = self.0.clone();
+        data.assign(inputs[0].clone());
+        [data]
+    }
+}

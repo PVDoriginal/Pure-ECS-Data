@@ -1,3 +1,4 @@
+pub use crate::prelude::*;
 #[macro_export]
 macro_rules! create_node {
     ($patch:ident $($name:ident)* | $node:ty | $({$($node_args:tt)*})? $([$($inlet_data:tt)+])? $(| $($inputs_n:ident)+)? $(|# $($inputs_f:ident)+)?) => {
@@ -30,7 +31,6 @@ macro_rules! create_node {
 
             );
         )?
-
 
         $(
         let $name = $patch.create_node(stringify!($name).into(), node.clone()).with_input_maybe(input).id();

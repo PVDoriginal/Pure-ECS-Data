@@ -7,7 +7,6 @@ fn main() {
     app.add_patch(counter);
     app.run();
 }
-
 patch!(
     counter;
 

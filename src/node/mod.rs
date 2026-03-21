@@ -29,6 +29,14 @@ pub trait Node<const IN: usize, const OUT: usize> {
         }
         array
     }
+
+    fn argument_order(&self) -> [usize; IN] {
+        let mut array = [0; IN];
+        for i in 0..IN {
+            array[i] = i;
+        }
+        array
+    }
 }
 
 #[derive(EntityEvent)]
@@ -45,7 +53,8 @@ impl Plugin for NodesPlugin {
         app.add_node::<Print>()
             .add_node::<Bang>()
             .add_node::<Number>()
-            .add_node::<F>();
+            .add_node::<F>()
+            .add_node::<nodes::Message>();
 
         seq!(N in 0..=10 {
             app.add_node::<nodes::Sum<N>>();

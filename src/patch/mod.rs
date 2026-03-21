@@ -9,6 +9,8 @@ use crate::{
     prelude::Print,
 };
 
+use crate::node::Node;
+
 pub mod inputs;
 pub mod loading;
 pub mod macros;
@@ -23,6 +25,7 @@ pub(crate) struct PatchNode {
     component_id: String,
     input: Option<Input>,
     internal_data: Vec<Data>,
+    arg_order: Vec<usize>,
 }
 
 impl Clone for PatchNode {
@@ -32,6 +35,7 @@ impl Clone for PatchNode {
             component_id: self.component_id.clone(),
             input: self.input.clone(),
             internal_data: self.internal_data.clone(),
+            arg_order: vec![],
         }
     }
 }
@@ -50,6 +54,7 @@ impl Patch {
     ) -> NodeCommands<'a, IN, OUT> {
         let component_id: String = node.get_type().into();
         let internal_data = node.internal_data().clone();
+        let arg_order = node.argument_order().to_vec();
 
         self.nodes.insert(
             name.clone(),
@@ -59,6 +64,7 @@ impl Patch {
                     component_id,
                     input: None,
                     internal_data,
+                    arg_order,
                 },
                 Ingoing([const { Data::None }; IN].to_vec()),
                 Outgoing([const { vec![] }; OUT].to_vec()),
@@ -108,7 +114,7 @@ impl Patch {
 
         let node = self.nodes.get_mut(&node.0).unwrap();
         for (i, data) in data.iter().enumerate() {
-            node.1.0[IN - i - 1] = data.clone();
+            node.1.0[node.0.arg_order[i]] = data.clone();
         }
     }
 
