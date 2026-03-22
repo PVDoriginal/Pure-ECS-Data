@@ -26,7 +26,7 @@ use super::*;
 #[derive(Component, Default, Clone, Reflect)]
 pub struct F(pub Option<Num>);
 
-impl Node<2, 1> for F {
+impl Node<2, 0, 1, 0> for F {
     fn process(&mut self, inputs: [Data; 2]) -> [Data; 1] {
         if matches!(inputs[1], Data::None)
             && let Data::Num(n) = &inputs[0]

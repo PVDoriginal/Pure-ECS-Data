@@ -1,6 +1,10 @@
 use std::ops::Range;
 
 use bevy::{platform::collections::HashMap, prelude::*};
+use bevy_seedling::{
+    edge::{Connect, Disconnect},
+    prelude::MainBus,
+};
 
 use crate::{
     node::connections::{
@@ -19,12 +23,14 @@ impl Plugin for PatchLoadingPlugin {
         app.init_resource::<LivePatch>();
         app.init_resource::<UpdateInlets>();
         app.init_resource::<UpdateOutlets>();
+        app.init_resource::<UpdateSignals>();
         app.add_systems(PreUpdate, load_patch);
         app.add_systems(
             PreUpdate,
             (
                 update_outlets.after(load_patch),
                 update_inlets.after(load_patch),
+                update_signals.after(load_patch),
             ),
         );
         app.add_systems(Last, despawn_old);
@@ -41,7 +47,17 @@ pub(crate) struct LoadedPatch(pub Patch);
 pub(crate) struct LivePatch(pub Patch);
 
 #[derive(Resource, Default)]
-pub(crate) struct PatchMap(pub HashMap<String, (Entity, Vec<Entity>, Vec<Entity>)>);
+pub(crate) struct PatchMap(
+    pub  HashMap<
+        String,
+        (
+            Entity,
+            Vec<Entity>,
+            Vec<Entity>,
+            Vec<(Entity, usize, usize)>,
+        ),
+    >,
+);
 
 #[derive(Component)]
 pub(crate) struct QueueDespawn;
@@ -51,6 +67,9 @@ pub(crate) struct UpdateInlets(pub Vec<Entity>);
 
 #[derive(Resource, Default)]
 pub(crate) struct UpdateOutlets(pub Vec<Entity>);
+
+#[derive(Resource, Default)]
+pub(crate) struct UpdateSignals(pub Vec<Entity>);
 
 #[derive(Component)]
 pub(crate) struct NodeId(pub String);
@@ -64,12 +83,14 @@ fn load_patch(
 
     mut update_inlets: ResMut<UpdateInlets>,
     mut update_outlets: ResMut<UpdateOutlets>,
+    mut update_signals: ResMut<UpdateSignals>,
 ) {
     update_inlets.0 = vec![];
     update_outlets.0 = vec![];
+    update_signals.0 = vec![];
 
-    for (node_name, (live_node, live_ingoing, live_outgoing)) in &live_patch.0.nodes {
-        if let Some((loaded_node, loaded_ingoing, loaded_outgoing)) =
+    for (node_name, (live_node, live_ingoing, live_outgoing, live_signals)) in &live_patch.0.nodes {
+        if let Some((loaded_node, loaded_ingoing, loaded_outgoing, loaded_signals)) =
             loaded_patch.0.nodes.get(node_name)
         {
             if loaded_node.component_id != live_node.component_id
@@ -86,6 +107,7 @@ fn load_patch(
                 );
                 update_inlets.0.push(entity);
                 update_outlets.0.push(entity);
+                update_signals.0.push(entity);
 
                 continue;
             }
@@ -135,6 +157,10 @@ fn load_patch(
 
                 update_outlets.0.push(mapped_node.0);
             }
+
+            if live_signals != loaded_signals {
+                update_signals.0.push(mapped_node.0);
+            }
         } else {
             let entity = spawn_node(
                 node_name.clone(),
@@ -146,6 +172,7 @@ fn load_patch(
             );
             update_inlets.0.push(entity);
             update_outlets.0.push(entity);
+            update_signals.0.push(entity);
         }
     }
 
@@ -162,11 +189,19 @@ fn load_patch(
 
 fn despawn_loaded_node(
     name: String,
-    map: &mut HashMap<String, (Entity, Vec<Entity>, Vec<Entity>)>,
+    map: &mut HashMap<
+        String,
+        (
+            Entity,
+            Vec<Entity>,
+            Vec<Entity>,
+            Vec<(Entity, usize, usize)>,
+        ),
+    >,
     commands: &mut Commands,
 ) {
     info!("Despawning {name}");
-    let (entity, inlets, outlets) = map.get(&name).unwrap();
+    let (entity, inlets, outlets, _) = map.get(&name).unwrap();
 
     commands.entity(*entity).insert(QueueDespawn);
 
@@ -186,7 +221,15 @@ fn spawn_node(
     node: &PatchNode,
     n_ingoing: usize,
     n_outgoing: usize,
-    map: &mut HashMap<String, (Entity, Vec<Entity>, Vec<Entity>)>,
+    map: &mut HashMap<
+        String,
+        (
+            Entity,
+            Vec<Entity>,
+            Vec<Entity>,
+            Vec<(Entity, usize, usize)>,
+        ),
+    >,
     commands: &mut Commands,
 ) -> Entity {
     info!("Spawning {name}");
@@ -220,14 +263,19 @@ fn spawn_node(
         .map(|_| commands.spawn(OutletOf(node_entity)).id())
         .collect();
 
-    map.insert(name, (node_entity, inlet_entities, outlet_entities));
+    map.insert(name, (node_entity, inlet_entities, outlet_entities, vec![]));
 
     node_entity
 }
 
 fn add_inlets(
     range: Range<usize>,
-    node_map: &mut (Entity, Vec<Entity>, Vec<Entity>),
+    node_map: &mut (
+        Entity,
+        Vec<Entity>,
+        Vec<Entity>,
+        Vec<(Entity, usize, usize)>,
+    ),
     commands: &mut Commands,
 ) {
     for i in range {
@@ -247,7 +295,12 @@ fn add_inlets(
 
 fn remove_inlets(
     range: Range<usize>,
-    node_map: &mut (Entity, Vec<Entity>, Vec<Entity>),
+    node_map: &mut (
+        Entity,
+        Vec<Entity>,
+        Vec<Entity>,
+        Vec<(Entity, usize, usize)>,
+    ),
     commands: &mut Commands,
 ) {
     for _ in range {
@@ -259,7 +312,12 @@ fn remove_inlets(
 
 fn add_outlets(
     range: Range<usize>,
-    node_map: &mut (Entity, Vec<Entity>, Vec<Entity>),
+    node_map: &mut (
+        Entity,
+        Vec<Entity>,
+        Vec<Entity>,
+        Vec<(Entity, usize, usize)>,
+    ),
     commands: &mut Commands,
 ) {
     for _ in range {
@@ -270,7 +328,12 @@ fn add_outlets(
 
 fn remove_outlets(
     range: Range<usize>,
-    node_map: &mut (Entity, Vec<Entity>, Vec<Entity>),
+    node_map: &mut (
+        Entity,
+        Vec<Entity>,
+        Vec<Entity>,
+        Vec<(Entity, usize, usize)>,
+    ),
     commands: &mut Commands,
 ) {
     for _ in range {
@@ -340,6 +403,64 @@ fn update_outlets(
         for (i, data) in outlet_connections.iter().enumerate() {
             let mut current_data = outlets.get_mut(outlet_entities[i]).unwrap();
             *current_data = data.clone();
+        }
+    }
+}
+
+fn update_signals(
+    update_signals: Res<UpdateSignals>,
+    nodes: Query<&NodeId>,
+    patch: Res<LoadedPatch>,
+    mut map: ResMut<PatchMap>,
+    mut commands: Commands,
+) {
+    for update_signal in &update_signals.0 {
+        let Ok(node_id) = nodes.get(*update_signal) else {
+            continue;
+        };
+
+        for (other, i, j) in &map.0.get(&node_id.0).unwrap().3 {
+            commands
+                .entity(*update_signal)
+                .disconnect_with(*other, &[(*i as u32, *j as u32)]);
+
+            info!(
+                "disconnecting {} {} from {} {}",
+                *update_signal, i, *other, *j
+            );
+        }
+
+        let connections: Vec<_> = patch
+            .0
+            .nodes
+            .get(&node_id.0)
+            .unwrap()
+            .3
+            .0
+            .iter()
+            .map(|connections| {
+                connections
+                    .iter()
+                    .map(|(name, i)| {
+                        let mapped_node = map.0.get(name).unwrap();
+                        (mapped_node.0, i)
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
+        let map_list = &mut map.0.get_mut(&node_id.0).unwrap().3;
+        *map_list = vec![];
+
+        for (i, connections) in connections.iter().enumerate() {
+            for (entity, j) in connections {
+                commands
+                    .entity(*update_signal)
+                    .connect_with(*entity, &[(i as u32, **j as u32)]);
+
+                info!("connecting {} {} to {} {}", *update_signal, i, *entity, **j);
+                map_list.push((*entity, i, **j));
+            }
         }
     }
 }

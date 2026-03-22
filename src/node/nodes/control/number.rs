@@ -35,7 +35,7 @@ impl From<f32> for Number {
     }
 }
 
-impl Node<1, 1> for Number {
+impl Node<1, 0, 1, 0> for Number {
     fn process(&mut self, inputs: [Data; 1]) -> [Data; 1] {
         if let Data::Num(n) = inputs[0].clone() {
             self.0 = n;

@@ -26,7 +26,7 @@ use super::*;
 #[derive(Component, Default, Clone, Reflect)]
 pub struct Sum<const N: usize>;
 
-impl<const N: usize> Node<N, 1> for Sum<N> {
+impl<const N: usize> Node<N, 0, 1, 0> for Sum<N> {
     fn process(&mut self, inputs: [Data; N]) -> [Data; 1] {
         let mut res = Data::None;
 

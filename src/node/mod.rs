@@ -15,7 +15,7 @@ pub mod connections;
 pub mod data;
 pub mod nodes;
 
-pub trait Node<const IN: usize, const OUT: usize> {
+pub trait Node<const IN: usize, const INS: usize, const OUT: usize, const OUTS: usize> {
     /// Called when the first inlet of the Node receives input.
     fn process(&mut self, _inputs: [Data; IN]) -> [Data; OUT] {
         [const { Data::None }; OUT]
@@ -36,7 +36,13 @@ pub trait Node<const IN: usize, const OUT: usize> {
         }
         array
     }
+
+    fn is_signal() -> bool {
+        false
+    }
 }
+
+pub trait SignalNode<const IN: usize, const OUT: usize> {}
 
 pub trait NodeComponent: PartialReflect {
     fn spawn_component<'a>(
@@ -69,22 +75,40 @@ impl Plugin for NodesPlugin {
     }
 }
 
-trait AddNode<const IN: usize, const OUT: usize> {
-    fn add_node<N: Node<IN, OUT> + Component<Mutability = Mutable>>(&mut self) -> &mut Self;
+trait AddNode<const IN: usize, const INS: usize, const OUT: usize, const OUTS: usize> {
+    fn add_node<N: Node<IN, INS, OUT, OUTS> + Component<Mutability = Mutable>>(
+        &mut self,
+    ) -> &mut Self;
 }
 
-impl<const IN: usize, const OUT: usize> AddNode<IN, OUT> for App {
-    fn add_node<N: Node<IN, OUT> + Component<Mutability = Mutable>>(&mut self) -> &mut Self {
-        self.add_systems(Update, activate_nodes_on_input::<IN, OUT, N>);
-        self.add_observer(on_node_activation::<IN, OUT, N>);
+impl<const IN: usize, const INS: usize, const OUT: usize, const OUTS: usize>
+    AddNode<IN, INS, OUT, OUTS> for App
+{
+    fn add_node<N: Node<IN, INS, OUT, OUTS> + Component<Mutability = Mutable>>(
+        &mut self,
+    ) -> &mut Self {
+        self.add_observer(on_node_activation::<IN, INS, OUT, OUTS, N>);
         self.register_required_components::<N, Inlets>();
         self.register_required_components::<N, Outlets>();
+
+        if N::is_signal() {
+            self.add_systems(Update, activate_signal_nodes::<IN, INS, OUT, OUTS, N>);
+        } else {
+            self.add_systems(Update, activate_nodes_on_input::<IN, INS, OUT, OUTS, N>);
+        }
+
         self
     }
 }
 
 // Iterates over all nodes that have binded input, queue them for activation is input is valid.
-fn activate_nodes_on_input<const IN: usize, const OUT: usize, N: Node<IN, OUT> + Component>(
+fn activate_nodes_on_input<
+    const IN: usize,
+    const INS: usize,
+    const OUT: usize,
+    const OUTS: usize,
+    N: Node<IN, INS, OUT, OUTS> + Component,
+>(
     nodes: Query<(Entity, &N, &Input)>,
     keys: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
@@ -103,8 +127,10 @@ fn activate_nodes_on_input<const IN: usize, const OUT: usize, N: Node<IN, OUT> +
 // Triggers when a Node is activated.
 fn on_node_activation<
     const IN: usize,
+    const INS: usize,
     const OUT: usize,
-    N: Node<IN, OUT> + Component<Mutability = Mutable>,
+    const OUTS: usize,
+    N: Node<IN, INS, OUT, OUTS> + Component<Mutability = Mutable>,
 >(
     trigger: On<ActivateNode>,
     mut nodes: Query<(&mut N, &Inlets, &Outlets)>,
@@ -177,6 +203,25 @@ fn on_node_activation<
             entity,
             inputs: Some(inputs),
             recursion: trigger.recursion + 1,
+        });
+    }
+}
+
+fn activate_signal_nodes<
+    const IN: usize,
+    const INS: usize,
+    const OUT: usize,
+    const OUTS: usize,
+    N: Node<IN, INS, OUT, OUTS> + Component<Mutability = Mutable>,
+>(
+    nodes: Query<Entity, With<N>>,
+    mut commands: Commands,
+) {
+    for node in nodes {
+        commands.entity(node).trigger(|entity| ActivateNode {
+            entity,
+            inputs: None,
+            recursion: 0,
         });
     }
 }

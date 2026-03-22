@@ -3,7 +3,7 @@ use super::*;
 #[derive(Component, Clone, Reflect)]
 pub struct Trigger<const N: usize>(pub [Data; N]);
 
-impl<const N: usize> Node<1, N> for Trigger<N> {
+impl<const N: usize> Node<1, 0, N, 0> for Trigger<N> {
     fn process(&mut self, _: [Data; 1]) -> [Data; N] {
         self.0.clone()
     }

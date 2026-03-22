@@ -22,7 +22,7 @@ use super::*;
 #[derive(Component, Default, Clone, Reflect)]
 pub struct Bang;
 
-impl Node<1, 1> for Bang {
+impl Node<1, 0, 1, 0> for Bang {
     fn process(&mut self, _: [Data; 1]) -> [Data; 1] {
         [Data::Bang]
     }

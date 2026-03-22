@@ -21,7 +21,7 @@ use super::*;
 #[derive(Component, Default, Clone, Reflect)]
 pub struct Print;
 
-impl Node<1, 0> for Print {
+impl Node<1, 0, 0, 0> for Print {
     fn process(&mut self, inputs: [Data; 1]) -> [Data; 0] {
         println!("{}", inputs[0]);
         []

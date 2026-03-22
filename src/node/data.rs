@@ -76,6 +76,24 @@ impl From<f32> for Data {
     }
 }
 
+impl From<Num> for f32 {
+    fn from(value: Num) -> Self {
+        match value {
+            Num::Float(x) => x,
+            Num::Int(x) => x as f32,
+        }
+    }
+}
+
+impl From<Data> for f32 {
+    fn from(value: Data) -> Self {
+        match value {
+            Data::Num(x) => x.into(),
+            _ => 0.0,
+        }
+    }
+}
+
 impl Data {
     fn string(&self) -> String {
         match self.clone() {

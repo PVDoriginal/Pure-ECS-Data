@@ -1,19 +1,35 @@
-use firewheel::Volume;
+use std::f32::consts::TAU;
 
 use super::*;
 
-#[derive(Diff, Patch, Debug, Clone, Copy, PartialEq, Component)]
+#[derive(Diff, Patch, Debug, Clone, PartialEq, Reflect, Component)]
 pub struct OscS {
-    pub gain: Volume,
+    pub hertz: f32,
 }
-
-impl Node<2, 1> for OscS {}
 
 impl Default for OscS {
     fn default() -> Self {
-        Self {
-            gain: Volume::Linear(0.4),
-        }
+        Self { hertz: 0.0 }
+    }
+}
+
+impl Node<1, 0, 0, 1> for OscS {
+    fn process(&mut self, inputs: [Data; 1]) -> [Data; 0] {
+        self.hertz = inputs[0].clone().into();
+        []
+    }
+    fn is_signal() -> bool {
+        true
+    }
+}
+
+impl NodeComponent for OscS {
+    fn spawn_component<'a>(
+        &self,
+        _data: Vec<Data>,
+        commands: &'a mut Commands,
+    ) -> EntityCommands<'a> {
+        commands.spawn(self.clone())
     }
 }
 
@@ -25,7 +41,7 @@ impl AudioNode for OscS {
 
     fn info(&self, _config: &Self::Configuration) -> AudioNodeInfo {
         AudioNodeInfo::new()
-            .debug_name("example_noise_gen")
+            .debug_name("osc signal node")
             .channel_config(ChannelConfig {
                 num_inputs: ChannelCount::ZERO,
                 num_outputs: ChannelCount::MONO,
@@ -35,19 +51,21 @@ impl AudioNode for OscS {
     fn construct_processor(
         &self,
         _config: &Self::Configuration,
-        _cx: ConstructProcessorContext,
+        cx: ConstructProcessorContext,
     ) -> impl AudioNodeProcessor {
         Processor {
-            fpd: 13,
-            gain: self.gain.amp_clamped(DEFAULT_AMP_EPSILON),
-            params: *self,
+            phase: 0.0,
+            hertz: self.hertz,
+            sample_rate: u32::from(cx.stream_info.sample_rate) as f32,
+            params: self.clone(),
         }
     }
 }
 
 struct Processor {
-    fpd: u32,
-    gain: f32,
+    phase: f32,
+    hertz: f32,
+    sample_rate: f32,
     params: OscS,
 }
 
@@ -60,26 +78,29 @@ impl AudioNodeProcessor for Processor {
         _extra: &mut ProcExtra,
     ) -> ProcessStatus {
         for patch in events.drain_patches::<OscS>() {
-            let OscSPatch::Gain(vol) = &patch;
-            self.gain = vol.amp_clamped(DEFAULT_AMP_EPSILON);
+            let OscSPatch::Hertz(hertz) = &patch;
+            self.hertz = *hertz;
 
-            self.params.apply(patch);
+            Patch::apply(&mut self.params, patch);
         }
 
-        if self.gain == 0.0 {
+        if self.hertz == 0.0 {
             return ProcessStatus::ClearAllOutputs;
         }
 
-        for s in buffers.outputs[0].iter_mut() {
-            self.fpd ^= self.fpd << 13;
-            self.fpd ^= self.fpd >> 17;
-            self.fpd ^= self.fpd << 5;
+        let phase_inc = self.hertz / self.sample_rate;
 
-            // Get a random normalized value in the range `[-1.0, 1.0]`.
-            let r = self.fpd as f32 * (2.0 / 4_294_967_295.0) - 1.0;
-            *s = self.gain * r;
-            println!("{s}");
+        for s in buffers.outputs[0].iter_mut() {
+            let value = (self.phase * TAU).sin();
+            *s = value;
+
+            self.phase += phase_inc;
+
+            if self.phase >= 1.0 {
+                self.phase -= 1.0;
+            }
         }
+
         ProcessStatus::OutputsModified
     }
 }

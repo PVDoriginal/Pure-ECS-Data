@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_seedling::SeedlingPlugin;
 
 use crate::{node::NodesPlugin, patch::PatchPlugin};
 
@@ -29,6 +30,6 @@ pub struct PureDataPlugin;
 
 impl Plugin for PureDataPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((PatchPlugin, NodesPlugin));
+        app.add_plugins((PatchPlugin, NodesPlugin, SeedlingPlugin::default()));
     }
 }

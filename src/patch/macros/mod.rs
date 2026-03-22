@@ -8,12 +8,26 @@ macro_rules! patch_instruction {
         create_node!($patch $($var_name)* | $node_type $(<$node_generic>)? | $({$($node_args)*})? $([$($inlet_data)+])? $(| $($inputs_n)*)? $(# $($inputs_f)+)?);
         patch_instruction!($patch $($t)*);
     };
+    ($patch:ident $($var_name:ident),* = $node_type:ident ~ $(<$node_generic:literal>)? $({$($node_args:tt)*})? $([$($inlet_data:tt),+])? $(| $($inputs_n:ident),+)? $(# $($inputs_f:ident),+)?; $($t:tt)*) => {
+        paste! (
+            create_node!($patch $($var_name)* | [<$node_type S>] $(<$node_generic>)? | $({$($node_args)*})? $([$($inlet_data)+])? $(| $($inputs_n)*)? $(# $($inputs_f)+)?);
+        );
+        patch_instruction!($patch $($t)*);
+    };
     ($patch:ident $($outlets:ident $([$outs:expr])?),* -> $inlet:ident $([$in:expr])?; $($t:tt)*) => {
         connect_1!($patch $($outlets $([$outs])?),* -> $inlet $([$in])?);
         patch_instruction!($patch $($t)*);
     };
+    ($patch:ident $($outlets:ident $([$outs:expr])?),* => $inlet:ident $([$in:expr])?; $($t:tt)*) => {
+        connect_1!($patch $($outlets $([$outs])?),* => $inlet $([$in])?);
+        patch_instruction!($patch $($t)*);
+    };
     ($patch:ident $outlet:ident $([$out:expr])? -> $($inlets:ident $([$ins:expr])?),*; $($t:tt)*) => {
         connect_2!($patch $outlet $([$out])? -> $($inlets $([$ins])?),*);
+        patch_instruction!($patch $($t)*);
+    };
+    ($patch:ident $outlet:ident $([$out:expr])? => $($inlets:ident $([$ins:expr])?),*; $($t:tt)*) => {
+        connect_2!($patch $outlet $([$out])? => $($inlets $([$ins])?),*);
         patch_instruction!($patch $($t)*);
     };
     ($patch:ident $inlet:ident [$index:expr] <- $data:tt ; $($t:tt)*) => {

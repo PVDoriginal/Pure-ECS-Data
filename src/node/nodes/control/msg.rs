@@ -15,7 +15,7 @@ impl From<Data> for Msg {
     }
 }
 
-impl Node<1, 1> for Msg {
+impl Node<1, 0, 1, 0> for Msg {
     fn process(&mut self, _: [Data; 1]) -> [Data; 1] {
         [self.0.clone()]
     }
