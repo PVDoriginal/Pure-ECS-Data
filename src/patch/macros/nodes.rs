@@ -2,7 +2,6 @@ pub use crate::prelude::*;
 #[macro_export]
 macro_rules! create_node {
     ($patch:ident $($name:ident)* | $node:ident $(<$generic:literal>)? | $({$($node_args:tt)*})? $([$($inlet_data:tt)+])? $(| $($inputs_n:ident)+)? $(# $($inputs_f:ident)+)?) => {
-
         initialize_node!(node | $node $(<$generic>)? | $({$($node_args)*})?);
 
         let mut input: Option<Input> = None;

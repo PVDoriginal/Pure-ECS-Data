@@ -15,7 +15,7 @@ pub mod macros;
 
 #[derive(Default, Clone)]
 pub struct Patch {
-    pub(crate) nodes: HashMap<String, (PatchNode, Ingoing, Outgoing, OutgoingSignals)>,
+    pub(crate) nodes: HashMap<String, (PatchNode, Ingoing, Outgoing, OutgoingRev, OutgoingSignals)>,
 }
 
 pub(crate) struct PatchNode {
@@ -43,6 +43,9 @@ pub(crate) struct Ingoing(Vec<Data>);
 
 #[derive(PartialEq, Clone)]
 pub(crate) struct Outgoing(Vec<Vec<(String, usize)>>);
+
+#[derive(PartialEq, Clone)]
+pub(crate) struct OutgoingRev(Vec<String>);
 
 #[derive(PartialEq, Clone)]
 pub(crate) struct OutgoingSignals(Vec<Vec<(String, usize)>>);
@@ -75,6 +78,7 @@ impl Patch {
                 },
                 Ingoing([const { Data::None }; IN].to_vec()),
                 Outgoing([const { vec![] }; OUT].to_vec()),
+                OutgoingRev(vec![]),
                 OutgoingSignals([const { vec![] }; OUTS].to_vec()),
             ),
         );
@@ -102,6 +106,12 @@ impl Patch {
         inlet: Inlet<I, IN1, INS1, OUT1, OUTS1>,
     ) {
         self.nodes.get_mut(&outlet.node.0).unwrap().2.0[O].push((inlet.node.0.clone(), I));
+        self.nodes
+            .get_mut(&inlet.node.0)
+            .unwrap()
+            .3
+            .0
+            .push(outlet.node.0.clone());
     }
 
     pub fn connect_signal<
@@ -120,7 +130,7 @@ impl Patch {
         outlet: OutletSignal<O, IN2, INS2, OUT2, OUTS2>,
         inlet: InletSignal<I, IN1, INS1, OUT1, OUTS1>,
     ) {
-        self.nodes.get_mut(&outlet.node.0).unwrap().3.0[O].push((inlet.node.0.clone(), I));
+        self.nodes.get_mut(&outlet.node.0).unwrap().4.0[O].push((inlet.node.0.clone(), I));
     }
 
     pub fn bind_input<const IN: usize, const INS: usize, const OUT: usize, const OUTS: usize>(

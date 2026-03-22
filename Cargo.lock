@@ -1331,8 +1331,7 @@ dependencies = [
 [[package]]
 name = "bevy_seedling"
 version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8eb5a378854d732eb89cb60f6fd0be533e230ac952bcb18f58132e1e44e91f9"
+source = "git+https://github.com/CorvusPrudens/bevy_seedling?branch=connection-fix#ca26168492d26b97fc42b745d35472b678cbbada"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -1355,8 +1354,7 @@ dependencies = [
 [[package]]
 name = "bevy_seedling_macros"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adc9ea6172ac34cd08a4035f167d2703b3ae1a50a097c4009858781eb23e800c"
+source = "git+https://github.com/CorvusPrudens/bevy_seedling?branch=connection-fix#ca26168492d26b97fc42b745d35472b678cbbada"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",

@@ -7,7 +7,10 @@ use crate::{
         data::Data,
         nodes::*,
     },
-    patch::inputs::Input,
+    patch::{
+        inputs::Input,
+        loading::{NodeId, load_patch},
+    },
 };
 use bevy::{ecs::component::Mutable, prelude::*};
 
@@ -32,12 +35,12 @@ pub trait Node<const IN: usize, const INS: usize, const OUT: usize, const OUTS: 
     fn argument_order(&self) -> [usize; IN] {
         let mut array = [0; IN];
         for i in 0..IN {
-            array[i] = i;
+            array[i] = IN - i - 1;
         }
         array
     }
 
-    fn is_signal() -> bool {
+    fn continuous_activation() -> bool {
         false
     }
 }
@@ -91,10 +94,16 @@ impl<const IN: usize, const INS: usize, const OUT: usize, const OUTS: usize>
         self.register_required_components::<N, Inlets>();
         self.register_required_components::<N, Outlets>();
 
-        if N::is_signal() {
-            self.add_systems(Update, activate_signal_nodes::<IN, INS, OUT, OUTS, N>);
+        if N::continuous_activation() {
+            self.add_systems(
+                Update,
+                activate_signal_nodes::<IN, INS, OUT, OUTS, N>.before(load_patch),
+            );
         } else {
-            self.add_systems(Update, activate_nodes_on_input::<IN, INS, OUT, OUTS, N>);
+            self.add_systems(
+                Update,
+                activate_nodes_on_input::<IN, INS, OUT, OUTS, N>.before(load_patch),
+            );
         }
 
         self
@@ -109,12 +118,13 @@ fn activate_nodes_on_input<
     const OUTS: usize,
     N: Node<IN, INS, OUT, OUTS> + Component,
 >(
-    nodes: Query<(Entity, &N, &Input)>,
+    nodes: Query<(Entity, &N, &Input, &NodeId)>,
     keys: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
 ) {
-    for (entity, _node, input) in nodes {
+    for (entity, _node, input, name) in nodes {
         if (input.input)(keys.clone()) {
+            info!("Activated node {} on input!", name.0);
             commands.entity(entity).trigger(|entity| ActivateNode {
                 entity,
                 inputs: None,
@@ -182,7 +192,9 @@ fn on_node_activation<
     // If input was put in a Hot inlet, queues that node for activation.
     outlets.iter().enumerate().for_each(|(i, c)| {
         for inlet in &c.0 {
-            let (mut inlet_data, inlet_of, other_inlets) = inlets.get_mut(*inlet).unwrap();
+            let Ok((mut inlet_data, inlet_of, other_inlets)) = inlets.get_mut(*inlet) else {
+                continue;
+            };
             inlet_data.0.assign(outputs[i].clone());
 
             if matches!(inlet_of.inlet_type, InletType::Hot) {

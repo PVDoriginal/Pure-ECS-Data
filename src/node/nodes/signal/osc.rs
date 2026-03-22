@@ -18,7 +18,7 @@ impl Node<1, 0, 0, 1> for OscS {
         self.hertz = inputs[0].clone().into();
         []
     }
-    fn is_signal() -> bool {
+    fn continuous_activation() -> bool {
         true
     }
 }

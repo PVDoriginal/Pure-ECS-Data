@@ -4,15 +4,25 @@ use pure_ecs_data::prelude::*;
 fn main() {
     let mut app = App::new();
     app.add_plugins((DefaultPlugins, PureDataPlugin));
-    app.add_patch(counter);
+    app.add_patch(osc_test);
     app.run();
 }
 
 patch!(
-    counter;
+    osc_test;
 
-    osc = Osc~ [400];
+    osc = Osc~ [500];
     dac = Dac~;
 
-    osc => dac[0], dac[1];
+    mult = Mult~ [0.3];
+
+    num1 = Number { 0.5 } # KeyA;
+    num2 = Number { 1.5 } # KeyB;
+
+    num1 -> mult;
+    num2 -> mult;
+
+    osc => mult;
+
+    mult => dac[0], dac[1];
 );
