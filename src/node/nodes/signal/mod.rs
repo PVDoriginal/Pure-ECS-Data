@@ -19,6 +19,9 @@ pub use osc::*;
 mod mult;
 pub use mult::*;
 
+mod noise;
+pub use noise::*;
+
 pub(crate) struct SignalNodesPlugin;
 
 impl Plugin for SignalNodesPlugin {
@@ -26,9 +29,11 @@ impl Plugin for SignalNodesPlugin {
         app.add_node::<OscS>();
         app.add_node::<DacS>();
         app.add_node::<MultS>();
+        app.add_node::<NoiseS>();
 
         app.register_node::<OscS>();
         app.register_node::<DacS>();
         app.register_node::<MultS>();
+        app.register_node::<NoiseS>();
     }
 }

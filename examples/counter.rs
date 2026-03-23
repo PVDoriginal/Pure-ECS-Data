@@ -11,6 +11,8 @@ fn main() {
 patch!(
     counter;
 
+    trigger = Trigger {bang, 1.5, "lol"};
+
     bang = Bang # Space;
     f = F;
 

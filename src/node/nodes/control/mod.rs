@@ -32,11 +32,8 @@ impl Plugin for ControlNodesPlugin {
             .add_node::<Msg>();
 
         seq!(N in 0..=10 {
-            app.add_node::<Sum<N>>();
-        });
-
-        seq!(N in 0..=10 {
-            app.add_node::<Trigger<N>>();
+            app.add_node::<Sum<N>>()
+                .add_node::<Trigger<N>>();
         });
     }
 }
