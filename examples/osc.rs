@@ -15,11 +15,15 @@ patch!(
 
     dac = Dac~;
 
-    minus = Minus~ [1];
-    multi = Mult~ [2];
+    minus = Minus~ [0.5];
+    multi = Mult~ [1000];
 
-    phasor => multi;
-    multi => minus;
+    phasor => minus;
+    minus => multi;
 
-    minus => dac[0], dac[1];
+    clip = Clip~;
+
+    multi => clip;
+
+    clip => dac[0], dac[1];
 );
