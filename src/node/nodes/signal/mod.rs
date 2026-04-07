@@ -22,6 +22,12 @@ pub use mult::*;
 mod noise;
 pub use noise::*;
 
+mod phasor;
+pub use phasor::*;
+
+mod minus;
+pub use minus::*;
+
 pub(crate) struct SignalNodesPlugin;
 
 impl Plugin for SignalNodesPlugin {
@@ -29,6 +35,8 @@ impl Plugin for SignalNodesPlugin {
         app.add_audio_node::<OscS>();
         app.add_audio_node::<DacS>();
         app.add_audio_node::<MultS>();
+        app.add_audio_node::<MinusS>();
         app.add_audio_node::<NoiseS>();
+        app.add_audio_node::<PhasorS>();
     }
 }

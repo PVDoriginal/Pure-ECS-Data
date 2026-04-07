@@ -11,18 +11,15 @@ fn main() {
 patch!(
     osc_test;
 
-    osc = Osc~ [440];
+    phasor = Phasor~ [1500];
 
     dac = Dac~;
 
-    mult = Mult~ [0.5];
-    osc => mult;
+    minus = Minus~ [1];
+    multi = Mult~ [2];
 
-    num1 = Number {0.1} # KeyA;
-    num2 = Number {1.5} # KeyB;
+    phasor -> multi;
+    multi -> minus;
 
-    num1 -> mult;
-    num2 -> mult;
-
-    mult => dac[0], dac[1];
+    minus => dac[0], dac[1];
 );
