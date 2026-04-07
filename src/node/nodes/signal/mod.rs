@@ -26,14 +26,9 @@ pub(crate) struct SignalNodesPlugin;
 
 impl Plugin for SignalNodesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_node::<OscS>();
-        app.add_node::<DacS>();
-        app.add_node::<MultS>();
-        app.add_node::<NoiseS>();
-
-        app.register_node::<OscS>();
-        app.register_node::<DacS>();
-        app.register_node::<MultS>();
-        app.register_node::<NoiseS>();
+        app.add_audio_node::<OscS>();
+        app.add_audio_node::<DacS>();
+        app.add_audio_node::<MultS>();
+        app.add_audio_node::<NoiseS>();
     }
 }

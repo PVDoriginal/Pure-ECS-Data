@@ -13,6 +13,11 @@ use crate::{
     },
 };
 use bevy::{ecs::component::Mutable, prelude::*};
+use bevy_seedling::node::RegisterNode;
+use firewheel::{
+    diff::{Diff, Patch},
+    node::AudioNode,
+};
 
 pub mod connections;
 pub mod data;
@@ -84,6 +89,22 @@ trait AddNode<const IN: usize, const INS: usize, const OUT: usize, const OUTS: u
     ) -> &mut Self;
 }
 
+trait AddAudioNode<const IN: usize, const INS: usize, const OUT: usize, const OUTS: usize>:
+    AddNode<IN, INS, OUT, OUTS>
+{
+    fn add_audio_node<
+        N: Node<IN, INS, OUT, OUTS>
+            + Component<Mutability = Mutable>
+            + AudioNode<Configuration: Component + Clone + PartialEq>
+            + Diff
+            + Patch
+            + Component<Mutability = Mutable>
+            + Clone,
+    >(
+        &mut self,
+    ) -> &mut Self;
+}
+
 impl<const IN: usize, const INS: usize, const OUT: usize, const OUTS: usize>
     AddNode<IN, INS, OUT, OUTS> for App
 {
@@ -107,6 +128,25 @@ impl<const IN: usize, const INS: usize, const OUT: usize, const OUTS: usize>
         }
 
         self
+    }
+}
+
+impl<const IN: usize, const INS: usize, const OUT: usize, const OUTS: usize>
+    AddAudioNode<IN, INS, OUT, OUTS> for App
+{
+    fn add_audio_node<
+        N: Node<IN, INS, OUT, OUTS>
+            + Component<Mutability = Mutable>
+            + AudioNode<Configuration: Component + Clone + PartialEq>
+            + Diff
+            + Patch
+            + Component<Mutability = Mutable>
+            + Clone,
+    >(
+        &mut self,
+    ) -> &mut Self {
+        self.register_node::<N>();
+        return self.add_node::<N>();
     }
 }
 

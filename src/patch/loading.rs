@@ -1,10 +1,7 @@
 use std::ops::Range;
 
 use bevy::{platform::collections::HashMap, prelude::*};
-use bevy_seedling::{
-    edge::{Connect, Disconnect},
-    prelude::MainBus,
-};
+use bevy_seedling::edge::{Connect, Disconnect};
 
 use crate::{
     node::connections::{

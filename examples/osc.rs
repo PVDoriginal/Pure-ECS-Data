@@ -11,7 +11,7 @@ fn main() {
 patch!(
     osc_test;
 
-    osc = Noise~ [440];
+    osc = Osc~ [440];
 
     dac = Dac~;
 
