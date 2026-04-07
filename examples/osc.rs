@@ -18,8 +18,8 @@ patch!(
     minus = Minus~ [1];
     multi = Mult~ [2];
 
-    phasor -> multi;
-    multi -> minus;
+    phasor => multi;
+    multi => minus;
 
     minus => dac[0], dac[1];
 );
