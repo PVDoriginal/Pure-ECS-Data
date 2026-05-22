@@ -14,11 +14,11 @@ patch!(
     trigger = Trigger {bang, 1.5, "lol"};
 
     bang = Bang # Space;
-    f = F [1];
+    f = F [2];
 
     bang -> f;
 
-    add1 = Div [0.5];
+    add1 = Pow [1.5];
     f -> add1;
 
     print = Print;

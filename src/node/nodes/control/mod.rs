@@ -13,6 +13,9 @@ pub use sum::*;
 mod div;
 pub use div::*;
 
+mod pow;
+pub use pow::*;
+
 mod number;
 pub use number::*;
 
@@ -33,7 +36,8 @@ impl Plugin for ControlNodesPlugin {
             .add_node::<Number>()
             .add_node::<F>()
             .add_node::<Msg>()
-            .add_node::<Div>();
+            .add_node::<Div>()
+            .add_node::<Pow>();
 
         seq!(N in 0..=10 {
             app.add_node::<Sum<N>>()
