@@ -14,11 +14,11 @@ patch!(
     trigger = Trigger {bang, 1.5, "lol"};
 
     bang = Bang # Space;
-    f = F;
+    f = F [1];
 
     bang -> f;
 
-    add1 = Sum<2> [100];
+    add1 = Div [0.5];
     f -> add1;
 
     print = Print;

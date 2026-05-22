@@ -1,5 +1,3 @@
-use std::f32::consts::TAU;
-
 use super::*;
 
 #[derive(Diff, Patch, Debug, Clone, PartialEq, Reflect, Component)]

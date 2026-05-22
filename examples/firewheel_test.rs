@@ -1,6 +1,6 @@
 //! A simple node that generates white noise.
 
-use bevy::{input::keyboard::KeyboardInput, prelude::*};
+use bevy::prelude::*;
 use bevy_seedling::prelude::*;
 use pure_ecs_data::prelude::*;
 

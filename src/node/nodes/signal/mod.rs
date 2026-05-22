@@ -1,5 +1,5 @@
 use super::*;
-use bevy_seedling::{node::RegisterNode, prelude::ChannelCount};
+use bevy_seedling::{ prelude::ChannelCount};
 use firewheel::{
     channel_config::ChannelConfig,
     diff::{Diff, Patch},
