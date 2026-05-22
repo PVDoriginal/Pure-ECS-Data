@@ -25,6 +25,9 @@ pub use trigger::*;
 mod msg;
 pub use msg::*;
 
+mod mtof;
+pub use mtof::*;
+
 use super::*;
 
 pub(crate) struct ControlNodesPlugin;
@@ -37,7 +40,8 @@ impl Plugin for ControlNodesPlugin {
             .add_node::<F>()
             .add_node::<Msg>()
             .add_node::<Div>()
-            .add_node::<Pow>();
+            .add_node::<Pow>()
+            .add_node::<MtoF>();
 
         seq!(N in 0..=10 {
             app.add_node::<Sum<N>>()

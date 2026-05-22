@@ -14,14 +14,21 @@ patch!(
     trigger = Trigger {bang, 1.5, "lol"};
 
     bang = Bang # Space;
-    f = F [2];
+
+
+    f = F [60];
+
+    midi = MtoF;
 
     bang -> f;
 
-    add1 = Pow [1.5];
-    f -> add1;
+    add1 = Sum<2> [1.];
+    f -> add1, midi;
 
     print = Print;
+    print1 = Print;
 
     add1 -> f[1], print;
+    midi -> print1; // <- maybe also try to print a specific print message?
+
 );
