@@ -27,7 +27,11 @@ patch!(
     f -> add1, midi;
 
     print = Print;
-    print1 = Print;
+    print1 = Print {"midi"};
+    print_nothing = Print;
+    print_msg = Print {"test"};
+
+    bang -> print_nothing, print_msg;
 
     add1 -> f[1], print;
     midi -> print1; // <- maybe also try to print a specific print message?
