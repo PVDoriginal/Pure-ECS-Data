@@ -11,29 +11,20 @@ fn main() {
 patch!(
     counter;
 
-    trigger = Trigger {bang, 1.5, "lol"};
+    osc = Osc~ [200];
 
-    bang = Bang # Space;
+    dac = Dac~; 
 
-    f = F [60];
+    a = Number {0.5} # KeyA; 
+    b = Number {2.0} # KeyB; 
 
-    midi = MtoF;
+    mult = Mult~ [0.5]; 
 
-    select = Select<3>;
+    a -> mult; 
+    b -> mult; 
 
-    bang -> f;
+    osc => mult; 
 
-    add1 = Sum<2> [1.];
-    f -> add1, midi;
-
-    print = Print;
-    print1 = Print {"midi"};
-    print_nothing = Print;
-    print_msg = Print {"test"};
-
-    bang -> print_nothing, print_msg;
-
-    add1 -> f[1], print;
-    midi -> print1; // <- maybe also try to print a specific print message?
+    mult => dac; 
 
 );

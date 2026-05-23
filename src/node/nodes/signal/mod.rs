@@ -31,6 +31,9 @@ pub use minus::*;
 mod clip;
 pub use clip::*;
 
+mod vline;
+pub use vline::*;
+
 pub(crate) struct SignalNodesPlugin;
 
 impl Plugin for SignalNodesPlugin {

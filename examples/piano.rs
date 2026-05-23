@@ -19,10 +19,7 @@ patch!(
     keyboard_h = Bang # KeyH;
     keyboard_j = Bang # KeyJ;
 
-
-
-
-    midi_do = Number [60];
+    midi_do  = Number [60];
     midi_re  = Number [62];
     midi_mi  = Number [64];
     midi_fa  = Number [65];
@@ -57,9 +54,11 @@ patch!(
     mult_global_volume = Mult~ [0.1];
 
     osc => mult_envelope;
+    
 
     dac = Dac~;
 
     mult_envelope => mult_global_volume;
     mult_global_volume => dac[0], dac[1];
+
 );

@@ -80,6 +80,7 @@ pub(crate) struct NodesPlugin;
 impl Plugin for NodesPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((ControlNodesPlugin, SignalNodesPlugin));
+        app.add_systems(PreUpdate, lololo_vline_aah);
     }
 }
 
@@ -275,5 +276,12 @@ fn activate_signal_nodes<
             inputs: None,
             recursion: 0,
         });
+    }
+}
+
+fn lololo_vline_aah(mut query: Query<&mut VlineS>, time: Res<Time>) {
+    for mut vline in &mut query {
+        vline.active = false; 
+        vline.delta_time = time.delta_secs();
     }
 }
