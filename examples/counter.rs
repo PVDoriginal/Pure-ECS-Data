@@ -15,10 +15,11 @@ patch!(
 
     bang = Bang # Space;
 
-
     f = F [60];
 
     midi = MtoF;
+
+    select = Select<3>;
 
     bang -> f;
 

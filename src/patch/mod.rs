@@ -29,7 +29,7 @@ pub(crate) struct PatchNode {
 impl Clone for PatchNode {
     fn clone(&self) -> Self {
         Self {
-            component: Box::new(Print),
+            component: Box::new(Print::default()),
             component_id: self.component_id.clone(),
             input: self.input.clone(),
             internal_data: self.internal_data.clone(),

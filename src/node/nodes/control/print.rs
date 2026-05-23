@@ -19,7 +19,9 @@ use super::*;
 ///
 /// Outputs "Hello World" each time you press `Space`.
 #[derive(Component, Default, Clone, Reflect)]
-pub struct Print;
+pub struct Print {
+    print_name: String,
+}
 
 impl Node<1, 0, 0, 0> for Print {
     fn process(&mut self, inputs: [Data; 1]) -> [Data; 0] {
@@ -29,7 +31,21 @@ impl Node<1, 0, 0, 0> for Print {
 }
 
 impl NodeComponent for Print {
-    fn spawn_component<'a>(&self, _: Vec<Data>, commands: &'a mut Commands) -> EntityCommands<'a> {
-        commands.spawn(self.clone())
+    fn spawn_component<'a>(
+        &self,
+        data: Vec<Data>,
+        commands: &'a mut Commands,
+    ) -> EntityCommands<'a> {
+        let mut comp = self.clone();
+
+        if let Some(Data::String(s)) = data.first() {
+            comp.print_name = s.clone();
+        }
+
+        commands.spawn(comp)
+    }
+
+    fn internal_data(&self) -> Vec<Data> {
+        vec![Data::String(self.clone().print_name)]
     }
 }
